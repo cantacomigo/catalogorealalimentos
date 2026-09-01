@@ -31,7 +31,9 @@ import {
   KeyRound,
   Eye,
   EyeOff,
-  Sparkles
+  Sparkles,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +48,7 @@ export const RepOrderPortalModal: React.FC = () => {
     isRepPortalOpen, 
     setIsRepPortalOpen, 
     orders, 
+    deleteOrder,
     salesReps, 
     selectedSalesRep, 
     setSelectedSalesRep,
@@ -64,6 +67,10 @@ export const RepOrderPortalModal: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeTab, setActiveTab] = useState<'orders' | 'reps'>('orders');
   const [showAllCompanyOrders, setShowAllCompanyOrders] = useState<boolean>(true);
+
+  // Order deletion confirmation state (accessible by Rep and Admin)
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isDeletingOrder, setIsDeletingOrder] = useState<boolean>(false);
 
   // Rep password management states for admin
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
@@ -261,6 +268,23 @@ export const RepOrderPortalModal: React.FC = () => {
       showToast('Erro ao atualizar senha do vendedor.');
     } finally {
       setIsSavingPassword(false);
+    }
+  };
+
+  const handleConfirmDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    setIsDeletingOrder(true);
+    try {
+      const id = orderToDelete.id;
+      await deleteOrder(id);
+      if (selectedOrder?.id === id) {
+        setSelectedOrder(null);
+      }
+      setOrderToDelete(null);
+    } catch (err) {
+      console.error('Error deleting order:', err);
+    } finally {
+      setIsDeletingOrder(false);
     }
   };
 
@@ -481,7 +505,7 @@ export const RepOrderPortalModal: React.FC = () => {
                           <div
                             key={order.id}
                             onClick={() => handleSelectOrder(order)}
-                            className={`p-3.5 cursor-pointer transition-all hover:bg-slate-50 border-l-4 ${
+                            className={`p-3.5 cursor-pointer transition-all hover:bg-slate-50 border-l-4 group relative ${
                               isSelected
                                 ? 'bg-red-50/70 border-l-red-600'
                                 : order.status === 'aguardando_vendedor'
@@ -491,7 +515,20 @@ export const RepOrderPortalModal: React.FC = () => {
                           >
                             <div className="flex items-start justify-between gap-2 mb-1">
                               <span className="font-mono font-bold text-xs text-slate-900">{order.id}</span>
-                              {getStatusBadge(order.status)}
+                              <div className="flex items-center gap-1">
+                                {getStatusBadge(order.status)}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOrderToDelete(order);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all cursor-pointer"
+                                  title="Excluir este pedido"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
 
                             <h4 className="text-xs font-bold text-slate-900 truncate">
@@ -537,7 +574,7 @@ export const RepOrderPortalModal: React.FC = () => {
                         <div className="flex flex-wrap items-center gap-2">
                           <button
                             onClick={() => handleWhatsAppClient(selectedOrder)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
                             WhatsApp Cliente
@@ -545,10 +582,20 @@ export const RepOrderPortalModal: React.FC = () => {
 
                           <button
                             onClick={() => handleOpenInvoiceModal(selectedOrder)}
-                            className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                            className="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                           >
                             <FileSpreadsheet className="w-3.5 h-3.5 text-red-400" />
                             Espelho de Pedido / NF
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setOrderToDelete(selectedOrder)}
+                            className="bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            title="Excluir este pedido permanentemente"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                            <span>Excluir</span>
                           </button>
                         </div>
                       </div>
@@ -819,6 +866,21 @@ export const RepOrderPortalModal: React.FC = () => {
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-800 hover:bg-slate-200 transition-colors"
                           >
                             Concluído
+                          </button>
+                          <button
+                            onClick={() => handleUpdateStatus('cancelado')}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200 transition-colors"
+                          >
+                            Cancelar Pedido
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOrderToDelete(selectedOrder)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer ml-auto"
+                            title="Excluir pedido definitivamente"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Excluir Definitivamente</span>
                           </button>
                         </div>
                       </div>
@@ -1131,6 +1193,98 @@ export const RepOrderPortalModal: React.FC = () => {
                     <>
                       <Check className="w-4 h-4" />
                       <span>Salvar Senha</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Deletion Confirmation Modal */}
+      {orderToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-red-200">
+            <div className="bg-gradient-to-r from-red-600 to-rose-700 text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Excluir Pedido Definitivamente</h3>
+                  <p className="text-[11px] text-red-100 font-mono">{orderToDelete.id}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOrderToDelete(null)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-2.5 text-red-900">
+                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Atenção: Ação irreversível!</p>
+                  <p className="text-[11px] text-red-800 mt-0.5 leading-relaxed">
+                    Você tem certeza que deseja excluir este pedido? Ele será removido permanentemente do banco de dados e do painel de controle.
+                  </p>
+                </div>
+              </div>
+
+              {/* Order Info Card */}
+              <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2 text-slate-700 font-medium">
+                <div className="flex justify-between items-center py-0.5 border-b border-slate-200/60">
+                  <span className="text-slate-500">Cliente / Razão Social:</span>
+                  <span className="font-bold text-slate-900 text-right max-w-[200px] truncate">
+                    {orderToDelete.customer.companyName || orderToDelete.customer.name}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-0.5 border-b border-slate-200/60">
+                  <span className="text-slate-500">Representante:</span>
+                  <span className="font-semibold text-slate-800">
+                    {orderToDelete.salesRep.name} ({orderToDelete.salesRep.code})
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-0.5 border-b border-slate-200/60">
+                  <span className="text-slate-500">Volumes & Itens:</span>
+                  <span className="font-semibold text-slate-800">
+                    {orderToDelete.items.length} itens ({orderToDelete.totalVolumes} vol)
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-0.5 pt-1">
+                  <span className="text-slate-700 font-bold">Valor Total:</span>
+                  <span className="font-bold text-red-700 text-sm font-mono">
+                    {orderToDelete.finalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setOrderToDelete(null)}
+                  disabled={isDeletingOrder}
+                  className="flex-1 py-2.5 px-3 border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteOrder}
+                  disabled={isDeletingOrder}
+                  className="flex-1 py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isDeletingOrder ? (
+                    <span>Excluindo...</span>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Sim, Excluir Pedido</span>
                     </>
                   )}
                 </button>

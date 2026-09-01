@@ -6,6 +6,7 @@ import {
   sendOrderToRepresentativeWhatsApp, 
   subscribeToOrders, 
   updateOrderInFirestore,
+  deleteOrderFromFirestore,
   subscribeToSalesReps,
   saveSalesRepInFirestore,
   deleteSalesRepFromFirestore,
@@ -50,6 +51,7 @@ interface CartContextType {
   isRepPortalOpen: boolean;
   setIsRepPortalOpen: (open: boolean) => void;
   orders: Order[];
+  deleteOrder: (orderId: string) => Promise<void>;
   pendingOrdersCount: number;
   selectedOrderForInvoice: Order | null;
   setSelectedOrderForInvoice: (order: Order | null) => void;
@@ -337,6 +339,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return order;
   };
 
+  const deleteOrder = async (orderId: string): Promise<void> => {
+    try {
+      await deleteOrderFromFirestore(orderId);
+      showToast(`Pedido ${orderId} excluído com sucesso!`);
+    } catch (e) {
+      console.error('Error deleting order:', e);
+      showToast('Erro ao excluir pedido.');
+      throw e;
+    }
+  };
+
   const pendingOrdersCount = orders.filter(o => o.status === 'aguardando_vendedor').length;
 
   return (
@@ -371,6 +384,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         isRepPortalOpen,
         setIsRepPortalOpen,
         orders,
+        deleteOrder,
         pendingOrdersCount,
         selectedOrderForInvoice,
         setSelectedOrderForInvoice,

@@ -173,6 +173,25 @@ export async function updateOrderInFirestore(
 }
 
 /**
+ * Delete an order from Firestore and local cache
+ */
+export async function deleteOrderFromFirestore(orderId: string): Promise<void> {
+  try {
+    const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+    await deleteDoc(orderRef);
+  } catch (err) {
+    console.warn('Could not delete order from Firestore, deleting locally:', err);
+  }
+
+  // Update local cache
+  try {
+    const cached: Order[] = JSON.parse(localStorage.getItem(LOCAL_ORDERS_KEY) || '[]');
+    const updated = cached.filter(o => o.id !== orderId);
+    localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(updated));
+  } catch {}
+}
+
+/**
  * Format Customer -> Representative WhatsApp Message
  */
 export function buildCustomerToRepWhatsAppMessage(order: Order): string {
