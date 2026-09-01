@@ -2,122 +2,113 @@ import React from 'react';
 
 interface RealAlimentosLogoProps {
   className?: string;
-  variant?: 'full' | 'icon' | 'horizontal';
+  variant?: 'full' | 'icon' | 'badge' | 'compact';
   theme?: 'light' | 'dark' | 'auto';
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  showSubtitle?: boolean;
 }
 
+/**
+ * Official Real Alimentos Logo Component
+ * Matches the official branding: Royal Blue typography with the Red & Blue flame/ribbon symbol.
+ */
 export const RealAlimentosLogo: React.FC<RealAlimentosLogoProps> = ({
   className = '',
   variant = 'full',
   theme = 'light',
-  size = 'md'
+  size = 'md',
+  showSubtitle = true
 }) => {
-  // Dimension scales
-  const iconSizes = {
-    sm: 'w-8 h-8',
-    md: 'w-11 h-11',
-    lg: 'w-14 h-14',
-    xl: 'w-20 h-20'
-  };
-
-  const textSizes = {
-    sm: { title: 'text-base', sub: 'text-[9px]', badge: 'text-[8px] px-1 py-0.2' },
-    md: { title: 'text-xl', sub: 'text-[11px]', badge: 'text-[9px] px-1.5 py-0.5' },
-    lg: { title: 'text-2xl', sub: 'text-xs', badge: 'text-[10px] px-2 py-0.5' },
-    xl: { title: 'text-3xl', sub: 'text-sm', badge: 'text-xs px-2.5 py-1' }
+  // Dimension and scale mappings
+  const dimensions = {
+    sm: { height: 32, iconSize: 26, textClass: 'text-sm sm:text-base', subText: 'text-[9px]' },
+    md: { height: 42, iconSize: 34, textClass: 'text-lg sm:text-xl', subText: 'text-[11px]' },
+    lg: { height: 54, iconSize: 44, textClass: 'text-2xl sm:text-3xl', subText: 'text-xs' },
+    xl: { height: 72, iconSize: 58, textClass: 'text-3xl sm:text-4xl', subText: 'text-sm' }
   };
 
   const isDark = theme === 'dark';
 
-  return (
-    <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      {/* High-Definition Crisp Vector Emblem Icon */}
-      <div 
-        className={`${iconSizes[size]} shrink-0 rounded-xl overflow-hidden shadow-sm flex items-center justify-center relative transition-transform group-hover:scale-105`}
-        style={{
-          background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 60%, #7F1D1D 100%)',
-          border: '1.5px solid #F59E0B'
-        }}
-      >
-        {/* Subtle radial inner glow */}
-        <div 
-          className="absolute inset-0 opacity-40"
-          style={{
-            background: 'radial-gradient(circle at 50% 20%, #FDE047 0%, transparent 60%)'
-          }}
-        />
+  // Crisp SVG of the official Real Alimentos flame / ribbon symbol (Red top petal + Blue lower swoosh)
+  const SymbolIcon = ({ sizePx = 36 }: { sizePx?: number }) => (
+    <svg 
+      viewBox="0 0 100 130" 
+      style={{ width: sizePx, height: (sizePx * 1.3) }}
+      className="shrink-0 drop-shadow-xs"
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* Top Red Petal */}
+      <path 
+        d="M32 38 C 30 18, 48 4, 64 2 C 78 1, 94 12, 94 28 C 94 42, 80 54, 60 56 C 54 44, 42 38, 32 38 Z" 
+        fill="#E30613" 
+      />
+      {/* Bottom Blue Swoosh / Ribbon */}
+      <path 
+        d="M48 20 C 34 26, 20 46, 20 68 C 20 96, 42 118, 68 128 C 82 122, 92 108, 92 90 C 92 70, 78 54, 52 46 C 46 36, 46 26, 48 20 Z" 
+        fill="#00529B" 
+      />
+      {/* Subtle blend overlay between red and blue parts */}
+      <path 
+        d="M48 20 C 44 28, 44 38, 54 46 C 62 46, 72 40, 78 32 C 70 24, 58 20, 48 20 Z" 
+        fill="#003366" 
+        opacity="0.35"
+      />
+    </svg>
+  );
 
-        {/* Vector SVG Crown + Monogram Logo */}
-        <svg 
-          viewBox="0 0 100 100" 
-          className="w-full h-full p-1 drop-shadow-md z-10"
-          fill="none" 
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Decorative Outer Ring */}
-          <circle cx="50" cy="50" r="44" stroke="#FDE047" strokeWidth="2.5" strokeDasharray="3 2" opacity="0.8" />
-          
-          {/* Royal Crown on Top */}
-          <path 
-            d="M32 36L38 24L50 32L62 24L68 36H32Z" 
-            fill="#FBBF24" 
-            stroke="#D97706" 
-            strokeWidth="1.5" 
-          />
-          <circle cx="38" cy="23" r="2.5" fill="#FEF08A" />
-          <circle cx="50" cy="30" r="2.5" fill="#FEF08A" />
-          <circle cx="62" cy="23" r="2.5" fill="#FEF08A" />
-          
-          {/* Center Ribbon / Plate */}
-          <rect x="22" y="38" width="56" height="42" rx="6" fill="#7F1D1D" stroke="#F59E0B" strokeWidth="2" />
-          
-          {/* Crisp Bold Letter R */}
-          <path 
-            d="M40 45H52C56.4 45 59 47.2 59 50.8C59 53.6 57.2 55.4 54.5 56L61 68H54.5L48.8 57H45.5V68H40V45ZM45.5 52.8H51.5C53.2 52.8 54.2 52 54.2 50.8C54.2 49.6 53.2 48.8 51.5 48.8H45.5V52.8Z" 
-            fill="#FFFFFF" 
-          />
-
-          {/* Underline Star/Diamond Flourish */}
-          <path d="M50 72L52 74.5L50 77L48 74.5Z" fill="#FDE047" />
-          <line x1="32" y1="74.5" x2="46" y2="74.5" stroke="#FDE047" strokeWidth="1.5" strokeLinecap="round" />
-          <line x1="54" y1="74.5" x2="68" y2="74.5" stroke="#FDE047" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+  // Full Vector Logo (Exact matching layout from company image)
+  if (variant === 'icon') {
+    return (
+      <div className={`inline-flex items-center justify-center p-1 rounded-xl bg-white shadow-sm border border-slate-200/80 ${className}`}>
+        <SymbolIcon sizePx={dimensions[size].iconSize} />
       </div>
+    );
+  }
 
-      {/* Brand Typography & Tagline */}
-      {variant !== 'icon' && (
-        <div className="flex flex-col justify-center">
+  // If in dark theme, wrap in a crisp, high-contrast white card or high-visibility pill so colors remain 100% faithful and prominent
+  if (isDark) {
+    return (
+      <div className={`inline-flex items-center gap-3 bg-white px-3.5 py-2 rounded-2xl shadow-md border border-white/20 select-none group transition-transform hover:scale-[1.02] ${className}`}>
+        <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
-            <span 
-              className={`font-black font-serif tracking-tight leading-none ${textSizes[size].title} ${
-                isDark ? 'text-white' : 'text-slate-900'
-              }`}
-            >
-              <span className="text-red-600 dark:text-red-500">Real</span>{' '}
-              <span className={isDark ? 'text-white' : 'text-slate-900'}>Alimentos</span>
+            {/* Real Alimentos wordmark in signature official royal blue */}
+            <span className={`font-black tracking-tight text-[#00529B] font-sans ${dimensions[size].textClass} leading-none`}>
+              Real Alimentos
             </span>
+          </div>
+          {showSubtitle && (
+            <span className={`font-semibold tracking-wider uppercase text-slate-500 mt-1 ${dimensions[size].subText}`}>
+              Distribuição & Food Service
+            </span>
+          )}
+        </div>
+        <SymbolIcon sizePx={dimensions[size].iconSize} />
+      </div>
+    );
+  }
 
-            <span 
-              className={`font-extrabold uppercase tracking-wider rounded-md font-sans shrink-0 shadow-2xs ${textSizes[size].badge} ${
-                isDark 
-                  ? 'bg-red-950 text-red-300 border border-red-800/80' 
-                  : 'bg-red-100 text-red-800 border border-red-200'
-              }`}
-            >
+  // Light / Transparent header display with maximum visibility
+  return (
+    <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
+      <div className="flex items-center gap-2 bg-white/95 backdrop-blur-xs px-2 py-1 rounded-xl">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-1.5">
+            <span className={`font-black tracking-tight text-[#00529B] font-sans ${dimensions[size].textClass} leading-none drop-shadow-2xs`}>
+              Real Alimentos
+            </span>
+            <span className="bg-red-50 text-red-700 text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded border border-red-200">
               Distribuição
             </span>
           </div>
-
-          <span 
-            className={`font-medium tracking-wide leading-tight mt-0.5 ${textSizes[size].sub} ${
-              isDark ? 'text-slate-400' : 'text-slate-500'
-            }`}
-          >
-            Alimentos Selecionados & Food Service
-          </span>
+          {showSubtitle && (
+            <span className={`font-medium tracking-wide text-slate-500 mt-0.5 ${dimensions[size].subText}`}>
+              Distribuindo sabor e qualidade
+            </span>
+          )}
         </div>
-      )}
+        <SymbolIcon sizePx={dimensions[size].iconSize} />
+      </div>
     </div>
   );
 };
