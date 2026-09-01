@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { X, DollarSign, Camera, Check, RotateCcw, Image as ImageIcon, Boxes, AlertTriangle, CloudCheck } from 'lucide-react';
 import { BRANDS } from '../data/brands';
 import { compressImage } from '../services/productCustomizationService';
@@ -16,6 +17,7 @@ export function QuickEditModal() {
     firebaseSyncState
   } = useProducts();
   const { showToast } = useCart();
+  const { isAdmin } = useAuth();
 
   const [priceInput, setPriceInput] = useState('');
   const [imageUrlInput, setImageUrlInput] = useState('');
@@ -36,6 +38,7 @@ export function QuickEditModal() {
   }, [editingProductForPrice]);
 
   if (!editingProductForPrice) return null;
+  if (!isAdmin) return null;
 
   const product = editingProductForPrice;
   const brand = BRANDS.find(b => b.id === product.brand);

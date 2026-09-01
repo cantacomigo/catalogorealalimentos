@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -25,9 +25,12 @@ import {
   Layers,
   ArrowUpRight,
   Plus,
-  RotateCcw
+  RotateCcw,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { Order, OrderStatus, SalesRep } from '../types';
 import { updateOrderInFirestore, forwardOrderToCompanyWhatsApp, sendOrderToRepresentativeWhatsApp, safeOpenUrl } from '../services/orderService';
 import { DEFAULT_COMPANY_SETTINGS } from '../data/salesReps';
@@ -48,11 +51,29 @@ export const RepOrderPortalModal: React.FC = () => {
     showToast 
   } = useCart();
 
-  const [selectedRepFilter, setSelectedRepFilter] = useState<string>(selectedSalesRep.id || 'all');
+  const { user, isAdmin, isSalesRep } = useAuth();
+
+  const [selectedRepFilter, setSelectedRepFilter] = useState<string>('all');
   const [selectedStatusTab, setSelectedStatusTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeTab, setActiveTab] = useState<'orders' | 'reps'>('orders');
+
+  // Enforce isolation when logged in as Sales Rep
+  useEffect(() => {
+    if (isSalesRep && user.salesRepId) {
+      setSelectedRepFilter(user.salesRepId);
+      const foundRep = salesReps.find(r => r.id === user.salesRepId);
+      if (foundRep) setSelectedSalesRep(foundRep);
+      // Sales rep should only view orders tab, not reps admin
+      setActiveTab('orders');
+    } else if (isAdmin) {
+      // Keep selectedRepFilter flexible for admin
+      if (selectedRepFilter === 'all' && selectedSalesRep?.id) {
+        // default all
+      }
+    }
+  }, [isSalesRep, user.salesRepId, isAdmin, salesReps, setSelectedSalesRep]);
 
   // Edit / Commercial terms states for selected order
   const [paymentTerms, setPaymentTerms] = useState<string>('');
@@ -65,10 +86,12 @@ export const RepOrderPortalModal: React.FC = () => {
 
   if (!isRepPortalOpen) return null;
 
-  // Filter orders
+  // Filter orders - Strict isolation: if salesRep, only own orders
   const filteredOrders = orders.filter((order) => {
-    // Rep filter
-    if (selectedRepFilter !== 'all' && order.salesRep.id !== selectedRepFilter) {
+    // Role enforcement
+    if (isSalesRep && user.salesRepId) {
+      if (order.salesRep.id !== user.salesRepId) return false;
+    } else if (selectedRepFilter !== 'all' && order.salesRep.id !== selectedRepFilter) {
       return false;
     }
     // Status tab
@@ -235,25 +258,32 @@ export const RepOrderPortalModal: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Tab switch */}
-                <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700 text-xs font-semibold">
-                  <button
-                    onClick={() => setActiveTab('orders')}
-                    className={`px-3 py-1.5 rounded-md transition-colors ${
-                      activeTab === 'orders' ? 'bg-red-600 text-white' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Pedidos ({orders.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('reps')}
-                    className={`px-3 py-1.5 rounded-md transition-colors ${
-                      activeTab === 'reps' ? 'bg-red-600 text-white' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    Representantes & Regiões ({salesReps.length})
-                  </button>
-                </div>
+                {/* Tab switch - Only show rep management to admin */}
+                {isAdmin ? (
+                  <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700 text-xs font-semibold">
+                    <button
+                      onClick={() => setActiveTab('orders')}
+                      className={`px-3 py-1.5 rounded-md transition-colors ${
+                        activeTab === 'orders' ? 'bg-red-600 text-white' : 'text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      Todos os Pedidos ({orders.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('reps')}
+                      className={`px-3 py-1.5 rounded-md transition-colors ${
+                        activeTab === 'reps' ? 'bg-red-600 text-white' : 'text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      Representantes & Regiões ({salesReps.length})
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 bg-blue-950/60 border border-blue-500/30 px-3 py-1 rounded-lg text-xs text-blue-200">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                    <span>Vendedor: <strong>{user.salesRepName}</strong></span>
+                  </div>
+                )}
 
                 <button
                   onClick={() => setIsRepPortalOpen(false)}
@@ -267,32 +297,43 @@ export const RepOrderPortalModal: React.FC = () => {
             {/* Subheader: Representative & Metrics Bar */}
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0 text-xs">
               <div className="flex items-center gap-3">
-                <span className="font-semibold text-slate-700">Filtrar por Vendedor:</span>
-                <select
-                  value={selectedRepFilter}
-                  onChange={(e) => {
-                    setSelectedRepFilter(e.target.value);
-                    const found = salesReps.find(r => r.id === e.target.value);
-                    if (found) setSelectedSalesRep(found);
-                  }}
-                  className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="all">⭐ Todos os Representantes ({orders.length} pedidos)</option>
-                  {salesReps.map((rep) => (
-                    <option key={rep.id} value={rep.id}>
-                      {rep.name} ({rep.code}) - {rep.regionName.split('(')[0]}
-                    </option>
-                  ))}
-                </select>
+                {isAdmin ? (
+                  <>
+                    <span className="font-semibold text-slate-700">Filtrar por Vendedor:</span>
+                    <select
+                      value={selectedRepFilter}
+                      onChange={(e) => {
+                        setSelectedRepFilter(e.target.value);
+                        const found = salesReps.find(r => r.id === e.target.value);
+                        if (found) setSelectedSalesRep(found);
+                      }}
+                      className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="all">⭐ Todos os Representantes ({orders.length} pedidos)</option>
+                      {salesReps.map((rep) => (
+                        <option key={rep.id} value={rep.id}>
+                          {rep.name} ({rep.code}) - {rep.regionName.split('(')[0]}
+                        </option>
+                      ))}
+                    </select>
 
-                <button
-                  onClick={openCreateRepModal}
-                  className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
-                  title="Cadastrar novo representante comercial"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Cadastrar Vendedor</span>
-                </button>
+                    <button
+                      onClick={openCreateRepModal}
+                      className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                      title="Cadastrar novo representante comercial"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Cadastrar Vendedor</span>
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-100 text-blue-900 font-bold px-2.5 py-1 rounded-md text-xs border border-blue-200 flex items-center gap-1.5">
+                      <Lock className="w-3 h-3 text-blue-700" />
+                      Visualizando apenas pedidos vinculados a você ({user.salesRepName})
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-4 text-slate-700">

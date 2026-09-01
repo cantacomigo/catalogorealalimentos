@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   X, 
   ShoppingCart, 
@@ -21,6 +22,7 @@ import { BRANDS } from '../data/brands';
 export function ProductModal() {
   const { selectedProductForModal, setSelectedProductForModal, addToCart } = useCart();
   const { products, setEditingProductForPrice } = useProducts();
+  const { isAdmin } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [unitType, setUnitType] = useState<'unidade' | 'caixa' | 'fardo'>('unidade');
   const [notes, setNotes] = useState('');
@@ -196,14 +198,16 @@ export function ProductModal() {
                 )}
               </div>
 
-              <button
-                onClick={() => setEditingProductForPrice(product)}
-                className="px-2.5 py-1.5 bg-white hover:bg-blue-50 text-blue-700 border border-slate-200 hover:border-blue-300 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-all"
-                title="Editar preço, estoque ou foto"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Editar</span>
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setEditingProductForPrice(product)}
+                  className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 hover:border-red-300 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs transition-all"
+                  title="Editar preço, estoque ou foto (Admin)"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-red-600" />
+                  <span>Editar</span>
+                </button>
+              )}
             </div>
           </div>
 

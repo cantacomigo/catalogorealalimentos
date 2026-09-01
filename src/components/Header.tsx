@@ -13,10 +13,15 @@ import {
   Users,
   Send,
   FileText,
-  MapPin
+  MapPin,
+  ShieldCheck,
+  Lock,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
+import { useAuth } from '../context/AuthContext';
 import { TOTAL_PAGES_IN_CATALOG } from '../data/products';
 import { REAL_ALIMENTOS_LOGO } from '../data/brands';
 
@@ -56,23 +61,38 @@ export function Header({
     lowStockCount, 
     outOfStockCount 
   } = useProducts();
+  const { 
+    user, 
+    isAdmin, 
+    isSalesRep, 
+    isClient, 
+    openAuthModal, 
+    logoutToClient 
+  } = useAuth();
+  
   const [isPageMenuOpen, setIsPageMenuOpen] = useState(false);
   const [isRepSelectorOpen, setIsRepSelectorOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  const pendingOrdersCount = orders.filter(o => o.status === 'aguardando_vendedor').length;
+  // Orders count filtered by current rep if logged in as rep, or total if admin
+  const visibleOrders = isSalesRep
+    ? orders.filter(o => o.salesRep.id === user.salesRepId)
+    : orders;
+  const pendingOrdersCount = visibleOrders.filter(o => o.status === 'aguardando_vendedor').length;
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
-      {/* Top micro bar with regional rep routing notice */}
+      {/* Top micro bar with regional rep routing notice and Role Session indicator */}
       <div className="bg-gradient-to-r from-red-700 via-red-800 to-slate-900 text-white text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 font-medium">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Real Alimentos • Distribuição com atendimento regional via vendedores e emissão direta de NF</span>
+            <span className="hidden sm:inline">Real Alimentos • Distribuição com atendimento regional e emissão direta de NF</span>
+            <span className="sm:hidden">Real Alimentos • Catálogo Digital</span>
           </div>
 
-          <div className="flex items-center gap-3 text-slate-100">
-            {/* Quick Rep Switcher Chip */}
+          <div className="flex items-center gap-2.5 text-slate-100">
+            {/* Quick Rep Switcher Chip for Client / Routing */}
             <div className="relative">
               <button
                 onClick={() => setIsRepSelectorOpen(!isRepSelectorOpen)}
@@ -80,7 +100,7 @@ export function Header({
                 title="Vendedor atribuído à sua região"
               >
                 <Users className="w-3 h-3 text-red-200" />
-                <span>Vendedor: <strong>{selectedSalesRep.name}</strong> ({selectedSalesRep.regionName})</span>
+                <span>Vendedor: <strong>{selectedSalesRep.name}</strong></span>
               </button>
 
               {isRepSelectorOpen && (
@@ -109,36 +129,96 @@ export function Header({
                     ))}
                   </div>
 
-                  <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]">
-                    <button
-                      onClick={() => {
-                        setIsRepSelectorOpen(false);
-                        openCreateRepModal();
-                      }}
-                      className="text-red-700 hover:text-red-800 font-bold hover:underline py-1 px-1 flex items-center gap-1 cursor-pointer"
-                    >
-                      + Cadastrar Vendedor
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsRepSelectorOpen(false);
-                        setIsRepPortalOpen(true);
-                      }}
-                      className="text-slate-600 hover:text-slate-900 font-semibold hover:underline py-1 px-1 cursor-pointer"
-                    >
-                      Gerenciar Equipe →
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]">
+                      <button
+                        onClick={() => {
+                          setIsRepSelectorOpen(false);
+                          openCreateRepModal();
+                        }}
+                        className="text-red-700 hover:text-red-800 font-bold hover:underline py-1 px-1 flex items-center gap-1 cursor-pointer"
+                      >
+                        + Cadastrar Vendedor
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsRepSelectorOpen(false);
+                          setIsRepPortalOpen(true);
+                        }}
+                        className="text-slate-600 hover:text-slate-900 font-semibold hover:underline py-1 px-1 cursor-pointer"
+                      >
+                        Gerenciar Equipe →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            <button
-              onClick={() => setIsRepPortalOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer"
-            >
-              <FileText className="w-3 h-3" /> Painel de Pedidos ({orders.length})
-            </button>
+            {/* Role Session Status Pill & Switcher */}
+            <div className="relative">
+              {isAdmin ? (
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs transition-colors"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Admin</span>
+                </button>
+              ) : isSalesRep ? (
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs transition-colors"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-blue-200" />
+                  <span>{user.salesRepName?.split(' ')[0]} (Vendedor)</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => openAuthModal('sales_rep')}
+                  className="bg-white/10 hover:bg-white/20 text-white font-semibold text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1 transition-colors"
+                  title="Acesso restrito para Vendedores e Administrador"
+                >
+                  <Lock className="w-3 h-3 text-slate-300" />
+                  <span>Área Restrita</span>
+                </button>
+              )}
+
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-1.5 w-60 bg-white text-slate-900 rounded-xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in">
+                  <div className="p-2 border-b border-slate-100 mb-1">
+                    <p className="text-xs font-bold text-slate-900">
+                      {isAdmin ? '🛡️ Administrador Geral' : `💼 ${user.salesRepName}`}
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      {isAdmin ? 'Acesso total: alterar preços, estoque e fotos' : 'Acesso restrito aos seus pedidos'}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      openAuthModal('admin');
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 flex items-center gap-2 text-slate-700"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
+                    <span>Trocar Perfil / Entrar como Admin</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      logoutToClient();
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-red-50 text-red-600 font-semibold flex items-center gap-2 mt-1"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sair (Modo Cliente)</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -208,16 +288,24 @@ export function Header({
           {/* Right Action buttons */}
           <div className="flex items-center gap-2 sm:gap-3">
             
-            {/* Sales Rep / Orders Portal Button */}
+            {/* Sales Rep / Orders Portal Button (If client clicks, open login modal) */}
             <button
               id="open-rep-portal-btn"
-              onClick={() => setIsRepPortalOpen(true)}
+              onClick={() => {
+                if (isClient) {
+                  openAuthModal('sales_rep');
+                } else {
+                  setIsRepPortalOpen(true);
+                }
+              }}
               className="relative px-3 py-2 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-              title="Acessar Área do Vendedor para gerenciar pedidos e enviar à matriz para NF"
+              title="Acessar Painel de Pedidos"
             >
               <Users className="w-3.5 h-3.5 text-red-400" />
-              <span className="hidden sm:inline">Área do Vendedor</span>
-              <span className="sm:hidden">Vendedor</span>
+              <span className="hidden sm:inline">
+                {isAdmin ? 'Painel Geral' : isSalesRep ? 'Meus Pedidos' : 'Área do Vendedor'}
+              </span>
+              <span className="sm:hidden">Pedidos</span>
               {pendingOrdersCount > 0 && (
                 <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
                   {pendingOrdersCount}
@@ -225,24 +313,37 @@ export function Header({
               )}
             </button>
 
-            {/* Stock & Price Management Trigger Button */}
-            <button
-              id="open-stock-manager-btn"
-              onClick={() => {
-                setActiveManagerTab('stock');
-                setIsPriceManagerOpen(true);
-              }}
-              className="relative px-3 py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer"
-              title="Gerenciar estoque sincronizado com o Firebase Firestore"
-            >
-              <Boxes className="w-3.5 h-3.5 text-slate-700" />
-              <span className="hidden sm:inline">Estoque</span>
-              {(lowStockCount > 0 || outOfStockCount > 0) && (
-                <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                  {lowStockCount + outOfStockCount}
-                </span>
-              )}
-            </button>
+            {/* Admin-only Price & Stock Management Button */}
+            {isAdmin ? (
+              <button
+                id="open-stock-manager-btn"
+                onClick={() => {
+                  setActiveManagerTab('prices');
+                  setIsPriceManagerOpen(true);
+                }}
+                className="relative px-3 py-2 text-xs font-bold rounded-xl bg-red-700 hover:bg-red-800 text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                title="Painel Administrador: Editar preços, fotos e estoque"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+                <span className="hidden sm:inline">Painel Admin</span>
+                <span className="sm:hidden">Admin</span>
+                {(lowStockCount > 0 || outOfStockCount > 0) && (
+                  <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">
+                    {lowStockCount + outOfStockCount}
+                  </span>
+                )}
+              </button>
+            ) : (
+              <button
+                id="open-admin-login-btn"
+                onClick={() => openAuthModal('admin')}
+                className="px-2.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-all flex items-center gap-1 cursor-pointer"
+                title="Acesso exclusivo para administradores"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                <span className="hidden lg:inline">Admin</span>
+              </button>
+            )}
 
             {/* View mode toggle (Grid vs Catalog Brochure Pages) */}
             <div className="hidden xl:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">

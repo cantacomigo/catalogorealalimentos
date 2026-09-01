@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { BRANDS, REAL_ALIMENTOS_LOGO } from '../data/brands';
 import { BrandId, Product } from '../types';
 import { compressImage } from '../services/productCustomizationService';
@@ -66,6 +67,7 @@ export function PriceManagerModal() {
   } = useProducts();
 
   const { showToast } = useCart();
+  const { isAdmin } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<BrandId | 'todas'>('todas');
@@ -277,6 +279,9 @@ export function PriceManagerModal() {
       importFileInputRef.current.value = '';
     }
   };
+
+  if (!isPriceManagerOpen) return null;
+  if (!isAdmin) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">

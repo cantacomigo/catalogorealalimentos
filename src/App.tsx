@@ -4,6 +4,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ProductProvider, useProducts } from './context/ProductContext';
 import { Header } from './components/Header';
@@ -20,6 +21,7 @@ import { CatalogBrochureView } from './components/CatalogBrochureView';
 import { OrderConfirmationModal } from './components/OrderConfirmationModal';
 import { RepOrderPortalModal } from './components/RepOrderPortalModal';
 import { SalesRepFormModal } from './components/SalesRepFormModal';
+import { AuthModal } from './components/AuthModal';
 import { Toast } from './components/Toast';
 import { filterAndSortProducts } from './data/products';
 import { REAL_ALIMENTOS_LOGO } from './data/brands';
@@ -298,6 +300,9 @@ function CatalogApp() {
       {/* Sales Representative Add/Edit Form Modal */}
       <SalesRepFormModal />
 
+      {/* Authentication & Role Selection Modal */}
+      <AuthModal />
+
       {/* Toast Notification */}
       <Toast />
     </div>
@@ -308,7 +313,9 @@ export default function App() {
   return (
     <ProductProvider>
       <CartProvider>
-        <CatalogApp />
+        <AuthProvider>
+          <CatalogApp />
+        </AuthProvider>
       </CartProvider>
     </ProductProvider>
   );

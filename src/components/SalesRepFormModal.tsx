@@ -17,6 +17,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { SalesRep } from '../types';
 import { safeOpenUrl } from '../services/orderService';
 
@@ -30,6 +31,7 @@ export const SalesRepFormModal: React.FC = () => {
     salesReps,
     showToast 
   } = useCart();
+  const { isAdmin } = useAuth();
 
   const isEditing = Boolean(editingRep);
 
@@ -89,6 +91,7 @@ export const SalesRepFormModal: React.FC = () => {
   }, [isRepFormModalOpen, editingRep, salesReps.length]);
 
   if (!isRepFormModalOpen) return null;
+  if (!isAdmin) return null;
 
   const handleAddCity = () => {
     const trimmed = cityInput.trim();

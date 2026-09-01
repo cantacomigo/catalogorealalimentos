@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   Plus, 
   Minus, 
@@ -25,6 +26,7 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart, setSelectedProductForModal, cart } = useCart();
   const { setEditingProductForPrice } = useProducts();
+  const { isAdmin } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [unitType, setUnitType] = useState<'unidade' | 'caixa' | 'fardo'>('unidade');
   const [isAddedRecently, setIsAddedRecently] = useState(false);
@@ -135,16 +137,18 @@ export function ProductCard({ product }: ProductCardProps) {
 
           {/* Quick info icon & edit photo trigger */}
           <div className="absolute top-2 right-2 flex items-center gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditingProductForPrice(product);
-              }}
-              className="p-1.5 rounded-full bg-white/90 text-slate-600 hover:text-blue-700 hover:bg-white shadow-sm transition-all"
-              title="Editar valor ou foto deste produto"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
+            {isAdmin && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingProductForPrice(product);
+                }}
+                className="p-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 shadow-sm transition-all"
+                title="Editar valor ou foto deste produto (Admin)"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -226,14 +230,16 @@ export function ProductCard({ product }: ProductCardProps) {
             </span>
           </div>
 
-          <button
-            onClick={() => setEditingProductForPrice(product)}
-            className="p-1.5 rounded-lg bg-white hover:bg-blue-50 text-slate-500 hover:text-blue-700 border border-slate-200 hover:border-blue-300 transition-all flex items-center gap-1 text-[11px] font-semibold"
-            title="Alterar valor unitário deste produto"
-          >
-            <Edit3 className="w-3 h-3 text-blue-600" />
-            <span>Editar</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setEditingProductForPrice(product)}
+              className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 hover:border-red-300 transition-all flex items-center gap-1 text-[11px] font-semibold"
+              title="Alterar valor unitário deste produto (Admin)"
+            >
+              <Edit3 className="w-3 h-3 text-red-600" />
+              <span>Editar</span>
+            </button>
+          )}
         </div>
 
         {/* Unit type selection & Stepper */}
