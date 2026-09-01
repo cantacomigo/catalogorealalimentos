@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { CartItem, Product, OrderCustomerInfo, SalesRep, Order } from '../types';
 import { INITIAL_SALES_REPS, findSalesRepByLocation } from '../data/salesReps';
 import { 
@@ -59,6 +59,7 @@ interface CartContextType {
   setSelectedProductForModal: (product: Product | null) => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
+  hideToast: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -93,8 +94,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const saved = localStorage.getItem(SELECTED_REP_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const found = INITIAL_SALES_REPS.find(r => r.id === parsed.id);
-        if (found) return found;
+        if (parsed && parsed.id && parsed.name) {
+          return parsed;
+        }
       }
     } catch {}
     return INITIAL_SALES_REPS[0];
@@ -109,6 +111,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState<Order | null>(null);
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const hideToast = () => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = null;
+    }
+    setToastMessage(null);
+  };
+
+  const showToast = (msg: string) => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = null;
+    }
+    setToastMessage(msg);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimeoutRef.current = null;
+    }, 3200);
+  };
 
   useEffect(() => {
     try {
@@ -123,16 +146,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const unsubReps = subscribeToSalesReps((newReps) => {
       if (newReps && newReps.length > 0) {
         setSalesReps(newReps);
-        // If current selectedSalesRep was updated, sync its state
+        // If current selectedSalesRep was updated, sync its state silently without triggering toasts
         setSelectedSalesRepState((currentSelected) => {
           const match = newReps.find(r => r.id === currentSelected.id);
-          return match || (newReps.find(r => r.isActive) || newReps[0]);
+          return match || currentSelected;
         });
       }
     });
 
     return () => {
       if (typeof unsubReps === 'function') unsubReps();
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -147,11 +173,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setSelectedSalesRep = (rep: SalesRep) => {
+    const isDifferent = selectedSalesRep.id !== rep.id;
     setSelectedSalesRepState(rep);
     try {
       localStorage.setItem(SELECTED_REP_KEY, JSON.stringify(rep));
     } catch {}
-    showToast(`Vendedor selecionado: ${rep.name} (${rep.regionName})`);
+    if (isDifferent) {
+      showToast(`Vendedor selecionado: ${rep.name} (${rep.regionName})`);
+    }
   };
 
   const saveSalesRep = async (rep: SalesRep): Promise<void> => {
@@ -208,13 +237,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       } catch {}
     }
     return detected;
-  };
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3500);
   };
 
   const addToCart = (
@@ -355,7 +377,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         selectedProductForModal,
         setSelectedProductForModal,
         toastMessage,
-        showToast
+        showToast,
+        hideToast
       }}
     >
       {children}

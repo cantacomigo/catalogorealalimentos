@@ -14,7 +14,11 @@ import {
   Building2, 
   Layers,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ShieldCheck
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -38,6 +42,8 @@ export const SalesRepFormModal: React.FC = () => {
   // Form State
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [regionName, setRegionName] = useState('');
@@ -64,6 +70,8 @@ export const SalesRepFormModal: React.FC = () => {
       if (editingRep) {
         setName(editingRep.name);
         setCode(editingRep.code);
+        setPassword(editingRep.password || '1234');
+        setShowPassword(false);
         setPhone(editingRep.phone);
         setEmail(editingRep.email || '');
         setRegionName(editingRep.regionName);
@@ -76,6 +84,8 @@ export const SalesRepFormModal: React.FC = () => {
         const nextNumber = (salesReps.length + 1).toString().padStart(2, '0');
         setName('');
         setCode(`RTV-${nextNumber}`);
+        setPassword('1234');
+        setShowPassword(false);
         setPhone('5511');
         setEmail('');
         setRegionName('');
@@ -128,6 +138,9 @@ export const SalesRepFormModal: React.FC = () => {
     if (!code.trim()) {
       newErrors.code = 'Informe o código do vendedor (ex: RTV-01).';
     }
+    if (!password.trim() || password.trim().length < 3) {
+      newErrors.password = 'A senha de acesso deve ter pelo menos 3 caracteres.';
+    }
     
     // Validate phone (must have at least 10-11 digits)
     const cleanPhone = phone.replace(/\D/g, '');
@@ -165,6 +178,8 @@ export const SalesRepFormModal: React.FC = () => {
         id: repId,
         name: name.trim(),
         code: code.trim().toUpperCase(),
+        password: password.trim(),
+        lastPasswordChange: new Date().toISOString(),
         phone: formattedPhone,
         email: email.trim() || undefined,
         regionName: regionName.trim(),
@@ -175,6 +190,7 @@ export const SalesRepFormModal: React.FC = () => {
       };
 
       await saveSalesRep(repData);
+      showToast(`Vendedor ${name.trim()} salvo com sucesso!`);
       setIsRepFormModalOpen(false);
     } catch (err: any) {
       console.error('Error saving sales rep:', err);
@@ -358,6 +374,74 @@ export const SalesRepFormModal: React.FC = () => {
                     placeholder="Ex: vendedor@realalimentos.com.br"
                     className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl outline-none focus:border-red-500 focus:ring-1 focus:ring-red-200 transition-all"
                   />
+                </div>
+              </div>
+            </div>
+
+            {/* Admin-only: Password & Credentials Management */}
+            <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-amber-200/80 text-amber-800 flex items-center justify-center font-bold text-xs">
+                    <KeyRound className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                      Senha de Acesso Individual do Vendedor
+                    </h4>
+                    <p className="text-[11px] text-amber-800">
+                      Privada e protegida. Apenas o Administrador pode visualizar e alterar.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold bg-amber-200/90 text-amber-900 px-2 py-0.5 rounded-md uppercase">
+                  Admin Only
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start mt-3">
+                <div className="sm:col-span-7">
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Ex: 1234 ou senha personalizada"
+                      className={`w-full pl-9 pr-10 py-2 text-sm bg-white font-mono font-bold border rounded-xl outline-none transition-all ${
+                        errors.password ? 'border-red-500 bg-red-50' : 'border-amber-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-300 text-slate-900'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition-colors p-0.5"
+                      title={showPassword ? "Ocultar senha" : "Ver senha"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-[11px] text-red-600 font-medium mt-1">{errors.password}</p>}
+                </div>
+
+                <div className="sm:col-span-5 flex items-center gap-1.5 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setPassword(Math.floor(1000 + Math.random() * 9000).toString())}
+                    className="text-xs bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold px-2.5 py-2 rounded-xl transition-colors flex items-center gap-1 shrink-0"
+                    title="Gerar PIN aleatório de 4 dígitos"
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-600" />
+                    <span>Gerar PIN</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPassword('1234')}
+                    className="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold px-2.5 py-2 rounded-xl transition-colors shrink-0"
+                    title="Definir padrão 1234"
+                  >
+                    Padrão (1234)
+                  </button>
                 </div>
               </div>
             </div>

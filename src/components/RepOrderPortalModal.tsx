@@ -27,7 +27,11 @@ import {
   Plus,
   RotateCcw,
   ShieldCheck,
-  Lock
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Sparkles
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -52,29 +56,28 @@ export const RepOrderPortalModal: React.FC = () => {
     showToast 
   } = useCart();
 
-  const { user, isAdmin, isSalesRep } = useAuth();
+  const { user, isAdmin, isSalesRep, loginAsAdmin } = useAuth();
 
   const [selectedRepFilter, setSelectedRepFilter] = useState<string>('all');
   const [selectedStatusTab, setSelectedStatusTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeTab, setActiveTab] = useState<'orders' | 'reps'>('orders');
+  const [showAllCompanyOrders, setShowAllCompanyOrders] = useState<boolean>(true);
 
-  // Enforce isolation when logged in as Sales Rep
+  // Rep password management states for admin
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+  const [passwordModalRep, setPasswordModalRep] = useState<SalesRep | null>(null);
+  const [repNewPasswordInput, setRepNewPasswordInput] = useState<string>('');
+  const [showNewPassModalInput, setShowNewPassModalInput] = useState<boolean>(false);
+  const [isSavingPassword, setIsSavingPassword] = useState<boolean>(false);
+
+  // Initialize filter
   useEffect(() => {
-    if (isSalesRep && user.salesRepId) {
+    if (isSalesRep && user.salesRepId && !showAllCompanyOrders) {
       setSelectedRepFilter(user.salesRepId);
-      const foundRep = salesReps.find(r => r.id === user.salesRepId);
-      if (foundRep) setSelectedSalesRep(foundRep);
-      // Sales rep should only view orders tab, not reps admin
-      setActiveTab('orders');
-    } else if (isAdmin) {
-      // Keep selectedRepFilter flexible for admin
-      if (selectedRepFilter === 'all' && selectedSalesRep?.id) {
-        // default all
-      }
     }
-  }, [isSalesRep, user.salesRepId, isAdmin, salesReps, setSelectedSalesRep]);
+  }, [isSalesRep, user.salesRepId, showAllCompanyOrders]);
 
   // Edit / Commercial terms states for selected order
   const [paymentTerms, setPaymentTerms] = useState<string>('');
@@ -87,13 +90,13 @@ export const RepOrderPortalModal: React.FC = () => {
 
   if (!isRepPortalOpen) return null;
 
-  // Filter orders - Strict isolation: if salesRep, only own orders
+  // Filter orders
   const filteredOrders = orders.filter((order) => {
-    // Role enforcement
-    if (isSalesRep && user.salesRepId) {
+    // Role & Rep filtering
+    if (!showAllCompanyOrders && isSalesRep && user.salesRepId) {
       if (order.salesRep.id !== user.salesRepId) return false;
-    } else if (selectedRepFilter !== 'all' && order.salesRep.id !== selectedRepFilter) {
-      return false;
+    } else if (selectedRepFilter !== 'all') {
+      if (order.salesRep.id !== selectedRepFilter) return false;
     }
     // Status tab
     if (selectedStatusTab !== 'all' && order.status !== selectedStatusTab) {
@@ -229,6 +232,38 @@ export const RepOrderPortalModal: React.FC = () => {
   const pendingCount = orders.filter(o => o.status === 'aguardando_vendedor').length;
   const forwardedCount = orders.filter(o => o.status === 'enviado_faturamento').length;
 
+  const handleOpenPasswordModal = (rep: SalesRep) => {
+    setPasswordModalRep(rep);
+    setRepNewPasswordInput(rep.password || '1234');
+    setShowNewPassModalInput(false);
+  };
+
+  const handleSaveRepPassword = async () => {
+    if (!passwordModalRep) return;
+    const newPass = repNewPasswordInput.trim();
+    if (newPass.length < 3) {
+      showToast('A senha deve ter no mínimo 3 caracteres.');
+      return;
+    }
+
+    setIsSavingPassword(true);
+    try {
+      const updatedRep: SalesRep = {
+        ...passwordModalRep,
+        password: newPass,
+        lastPasswordChange: new Date().toISOString()
+      };
+      await saveSalesRep(updatedRep);
+      showToast(`Senha do vendedor ${passwordModalRep.name} atualizada com sucesso!`);
+      setPasswordModalRep(null);
+    } catch (err) {
+      console.error('Error updating rep password:', err);
+      showToast('Erro ao atualizar senha do vendedor.');
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
   return (
     <>
       <AnimatePresence>
@@ -296,42 +331,59 @@ export const RepOrderPortalModal: React.FC = () => {
             {/* Subheader: Representative & Metrics Bar */}
             <div className="bg-slate-100 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0 text-xs">
               <div className="flex items-center gap-3">
-                {isAdmin ? (
-                  <>
-                    <span className="font-semibold text-slate-700">Filtrar por Vendedor:</span>
-                    <select
-                      value={selectedRepFilter}
-                      onChange={(e) => {
-                        setSelectedRepFilter(e.target.value);
-                        const found = salesReps.find(r => r.id === e.target.value);
-                        if (found) setSelectedSalesRep(found);
-                      }}
-                      className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      <option value="all">⭐ Todos os Representantes ({orders.length} pedidos)</option>
-                      {salesReps.map((rep) => (
-                        <option key={rep.id} value={rep.id}>
-                          {rep.name} ({rep.code}) - {rep.regionName.split('(')[0]}
-                        </option>
-                      ))}
-                    </select>
+                <span className="font-semibold text-slate-700">Filtrar por Vendedor:</span>
+                <select
+                  value={showAllCompanyOrders ? 'all' : selectedRepFilter}
+                  onChange={(e) => {
+                    if (e.target.value === 'all') {
+                      setShowAllCompanyOrders(true);
+                      setSelectedRepFilter('all');
+                    } else {
+                      setShowAllCompanyOrders(false);
+                      setSelectedRepFilter(e.target.value);
+                      const found = salesReps.find(r => r.id === e.target.value);
+                      if (found) setSelectedSalesRep(found);
+                    }
+                  }}
+                  className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="all">⭐ Todos os Pedidos da Empresa ({orders.length} pedidos)</option>
+                  {salesReps.map((rep) => (
+                    <option key={rep.id} value={rep.id}>
+                      {rep.name} ({rep.code}) - {rep.regionName.split('(')[0]}
+                    </option>
+                  ))}
+                </select>
 
-                    <button
-                      onClick={openCreateRepModal}
-                      className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
-                      title="Cadastrar novo representante comercial"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Cadastrar Vendedor</span>
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="bg-blue-100 text-blue-900 font-bold px-2.5 py-1 rounded-md text-xs border border-blue-200 flex items-center gap-1.5">
-                      <Lock className="w-3 h-3 text-blue-700" />
-                      Visualizando apenas pedidos vinculados a você ({user.salesRepName})
-                    </span>
-                  </div>
+                {isAdmin && (
+                  <button
+                    onClick={openCreateRepModal}
+                    className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                    title="Cadastrar novo representante comercial"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Cadastrar Vendedor</span>
+                  </button>
+                )}
+
+                {isSalesRep && (
+                  <button
+                    onClick={() => {
+                      setShowAllCompanyOrders(!showAllCompanyOrders);
+                      if (showAllCompanyOrders && user.salesRepId) {
+                        setSelectedRepFilter(user.salesRepId);
+                      } else {
+                        setSelectedRepFilter('all');
+                      }
+                    }}
+                    className={`px-2.5 py-1.5 rounded-lg font-bold text-xs border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      showAllCompanyOrders 
+                        ? 'bg-blue-600 text-white border-blue-700 shadow-xs' 
+                        : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
+                    }`}
+                  >
+                    <span>{showAllCompanyOrders ? '✓ Vendo Toda a Empresa' : `Filtrar Apenas Meus Pedidos`}</span>
+                  </button>
                 )}
               </div>
 
@@ -394,11 +446,34 @@ export const RepOrderPortalModal: React.FC = () => {
                   {/* Orders Scrollable List */}
                   <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
                     {filteredOrders.length === 0 ? (
-                      <div className="p-8 text-center text-slate-400">
-                        <Package className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm font-semibold">Nenhum pedido encontrado</p>
-                        <p className="text-xs mt-1">Os pedidos feitos pelos clientes no catálogo aparecerão aqui em tempo real.</p>
-                      </div>
+                      orders.length > 0 ? (
+                        <div className="p-5 m-3 bg-amber-50 rounded-xl border border-amber-200 text-center">
+                          <AlertCircle className="w-8 h-8 mx-auto mb-2 text-amber-600 animate-pulse" />
+                          <h4 className="text-xs font-bold text-amber-950 mb-1">
+                            {orders.length} pedido{orders.length > 1 ? 's' : ''} registrado{orders.length > 1 ? 's' : ''} na empresa!
+                          </h4>
+                          <p className="text-[11px] text-amber-800 mb-3 leading-relaxed">
+                            O pedido que acabou de entrar foi atribuído a outro representante ou filial da Real Alimentos.
+                          </p>
+                          <button
+                            onClick={() => {
+                              setShowAllCompanyOrders(true);
+                              setSelectedRepFilter('all');
+                              setSelectedStatusTab('all');
+                              setSearchQuery('');
+                            }}
+                            className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <span>Visualizar Todos os Pedidos da Empresa</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="p-8 text-center text-slate-400">
+                          <Package className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm font-semibold">Nenhum pedido encontrado</p>
+                          <p className="text-xs mt-1">Os pedidos feitos pelos clientes no catálogo aparecerão aqui em tempo real.</p>
+                        </div>
+                      )
                     ) : (
                       filteredOrders.map((order) => {
                         const isSelected = selectedOrder?.id === order.id;
@@ -904,6 +979,36 @@ export const RepOrderPortalModal: React.FC = () => {
                                 ))}
                               </div>
                             </div>
+
+                            {/* Admin Password Row */}
+                            {isAdmin && (
+                              <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between gap-2 bg-amber-50/60 -mx-4 -mb-4 p-3 rounded-b-xl">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <KeyRound className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                                  <span className="text-[11px] font-bold text-amber-950 shrink-0">Senha:</span>
+                                  <span className="font-mono text-xs font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-amber-200">
+                                    {revealedPasswords[rep.id] ? (rep.password || '1234') : '••••••'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setRevealedPasswords(prev => ({ ...prev, [rep.id]: !prev[rep.id] }))}
+                                    className="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors shrink-0"
+                                    title={revealedPasswords[rep.id] ? "Ocultar senha" : "Ver senha (Apenas Administrador)"}
+                                  >
+                                    {revealedPasswords[rep.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPasswordModal(rep)}
+                                  className="text-[11px] bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 shadow-xs shrink-0 cursor-pointer"
+                                >
+                                  <KeyRound className="w-3 h-3" />
+                                  <span>Alterar Senha</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -935,6 +1040,105 @@ export const RepOrderPortalModal: React.FC = () => {
           </motion.div>
         </div>
       </AnimatePresence>
+
+      {/* Admin Fast Password Change Modal */}
+      {passwordModalRep && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden animate-in zoom-in-95">
+            <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Alterar Senha do Vendedor</h3>
+                  <p className="text-[11px] text-amber-100">{passwordModalRep.name} ({passwordModalRep.code})</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPasswordModalRep(null)}
+                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 leading-relaxed">
+                🔒 <strong>Apenas o Administrador</strong> pode definir ou alterar a senha deste vendedor. O vendedor usará esta credencial para acessar seus pedidos.
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Nova Senha / PIN Individual
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showNewPassModalInput ? "text" : "password"}
+                    autoFocus
+                    value={repNewPasswordInput}
+                    onChange={(e) => setRepNewPasswordInput(e.target.value)}
+                    placeholder="Digite a nova senha..."
+                    className="w-full text-sm font-mono font-bold pl-9 pr-10 py-2.5 bg-slate-50 border border-amber-300 rounded-xl outline-none focus:border-amber-500 focus:bg-white transition-all text-slate-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassModalInput(!showNewPassModalInput)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1"
+                    title={showNewPassModalInput ? "Ocultar senha" : "Ver senha"}
+                  >
+                    {showNewPassModalInput ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRepNewPasswordInput(Math.floor(1000 + Math.random() * 9000).toString())}
+                  className="flex-1 text-xs bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 font-semibold py-1.5 px-2 rounded-lg border border-slate-200 transition-colors flex items-center justify-center gap-1"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-600" />
+                  <span>Gerar PIN Aleatório</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRepNewPasswordInput('1234')}
+                  className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-1.5 px-2.5 rounded-lg border border-slate-200 transition-colors"
+                >
+                  Padrão (1234)
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setPasswordModalRep(null)}
+                  className="flex-1 py-2 px-3 border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveRepPassword}
+                  disabled={isSavingPassword || repNewPasswordInput.trim().length < 3}
+                  className="flex-1 py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingPassword ? (
+                    <span>Salvando...</span>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Salvar Senha</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Modal for Official NF View */}
       {isInvoiceModalOpen && invoiceOrder && (

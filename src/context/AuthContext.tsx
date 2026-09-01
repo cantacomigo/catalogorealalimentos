@@ -13,7 +13,7 @@ export interface AuthUser {
 interface AuthContextType {
   user: AuthUser;
   loginAsAdmin: (password: string) => boolean;
-  loginAsSalesRep: (rep: SalesRep, pin?: string) => boolean;
+  loginAsSalesRep: (rep: SalesRep, passwordEntered: string) => boolean;
   logoutToClient: () => void;
   isAdmin: boolean;
   isSalesRep: boolean;
@@ -24,9 +24,11 @@ interface AuthContextType {
   authModalTargetRole: UserRole | null;
   openAuthModal: (targetRole?: UserRole) => void;
   adminPasswordConfigured: string;
+  changeAdminPassword: (newPass: string) => void;
 }
 
 const AUTH_STORAGE_KEY = 'real_alimentos_auth_session_v1';
+const ADMIN_PASS_STORAGE_KEY = 'real_alimentos_admin_master_pass_v1';
 const DEFAULT_ADMIN_PASS = 'admin123'; // Default PIN for initial access
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { role: 'client' };
   });
 
+  const [adminPasswordConfigured, setAdminPasswordState] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(ADMIN_PASS_STORAGE_KEY);
+      return saved || DEFAULT_ADMIN_PASS;
+    } catch {
+      return DEFAULT_ADMIN_PASS;
+    }
+  });
+
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalTargetRole, setAuthModalTargetRole] = useState<UserRole | null>(null);
 
@@ -51,9 +62,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [user]);
 
+  const changeAdminPassword = (newPass: string) => {
+    const trimmed = newPass.trim();
+    if (trimmed.length >= 4) {
+      setAdminPasswordState(trimmed);
+      try {
+        localStorage.setItem(ADMIN_PASS_STORAGE_KEY, trimmed);
+      } catch {}
+    }
+  };
+
   const loginAsAdmin = (password: string): boolean => {
-    // Allows default password or custom admin pass
-    if (password === DEFAULT_ADMIN_PASS || password === 'real2026' || password === 'admin') {
+    const p = password.trim();
+    if (
+      p === adminPasswordConfigured || 
+      p === DEFAULT_ADMIN_PASS || 
+      p === 'real2026' || 
+      p === 'admin'
+    ) {
       setUser({
         role: 'admin',
         adminName: 'Administrador Real Alimentos'
@@ -64,9 +90,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  const loginAsSalesRep = (rep: SalesRep, pin?: string): boolean => {
-    // If rep has specific PIN/Code or direct verification
-    if (!pin || pin === rep.code || pin === '1234' || pin === rep.phone.slice(-4)) {
+  const loginAsSalesRep = (rep: SalesRep, passwordEntered: string): boolean => {
+    const entered = passwordEntered.trim();
+    if (!entered) return false;
+
+    // Check against rep's specific configured password
+    const expectedPassword = rep.password ? rep.password.trim() : '1234';
+    
+    // Valid if matches individual password, or fallback to rep.code/1234 if unconfigured
+    const isMatch = (
+      entered === expectedPassword || 
+      (!rep.password && (entered === rep.code || entered === '1234'))
+    );
+
+    if (isMatch) {
       setUser({
         role: 'sales_rep',
         salesRepId: rep.id,
@@ -107,7 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthModalOpen,
         authModalTargetRole,
         openAuthModal,
-        adminPasswordConfigured: DEFAULT_ADMIN_PASS
+        adminPasswordConfigured,
+        changeAdminPassword
       }}
     >
       {children}
@@ -122,3 +160,4 @@ export function useAuth() {
   }
   return context;
 }
+

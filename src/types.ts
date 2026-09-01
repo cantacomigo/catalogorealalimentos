@@ -122,6 +122,8 @@ export interface SalesRep {
   avatarUrl?: string;
   isActive: boolean;
   notes?: string;
+  password?: string; // Individual private password/PIN set by Administrator
+  lastPasswordChange?: string;
 }
 
 export type OrderStatus =
