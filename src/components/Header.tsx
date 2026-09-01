@@ -24,6 +24,7 @@ import { useProducts } from '../context/ProductContext';
 import { useAuth } from '../context/AuthContext';
 import { TOTAL_PAGES_IN_CATALOG } from '../data/products';
 import { REAL_ALIMENTOS_LOGO } from '../data/brands';
+import { RealAlimentosLogo } from './RealAlimentosLogo';
 
 interface HeaderProps {
   searchQuery: string;
@@ -235,29 +236,10 @@ export function Header({
                 setSelectedPage(null);
                 setViewMode('grid');
               }}
-              className="cursor-pointer group flex items-center gap-2.5"
+              className="cursor-pointer group"
+              title="Real Alimentos - Início"
             >
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm border border-slate-200 group-hover:scale-105 group-hover:shadow-md transition-all overflow-hidden shrink-0">
-                <img 
-                  src={REAL_ALIMENTOS_LOGO} 
-                  alt="Real Alimentos Logo" 
-                  className="w-full h-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 font-serif">
-                    Real Alimentos
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-800 px-1.5 py-0.5 rounded">
-                    Catálogo
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 font-medium -mt-0.5">
-                  Distribuindo sabor e qualidade
-                </p>
-              </div>
+              <RealAlimentosLogo size="md" variant="full" />
             </div>
           </div>
 

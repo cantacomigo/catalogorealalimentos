@@ -8,6 +8,7 @@ import {
   ShoppingBag
 } from 'lucide-react';
 import { BRANDS, REAL_ALIMENTOS_LOGO } from '../data/brands';
+import { RealAlimentosLogo } from './RealAlimentosLogo';
 import { BrandId } from '../types';
 
 interface HeroBannerProps {
@@ -42,24 +43,14 @@ export const HeroBanner = ({
             </span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-lg border border-white/20 shrink-0">
-            <img 
-              src={REAL_ALIMENTOS_LOGO} 
-              alt="Real Alimentos" 
-              className="h-9 w-auto object-contain"
-              referrerPolicy="no-referrer"
-            />
+          <div className="hidden sm:flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl shadow-lg border border-white/20 shrink-0">
+            <RealAlimentosLogo size="sm" variant="full" theme="dark" />
           </div>
         </div>
 
         <div className="flex items-center gap-3 mb-2">
-          <div className="sm:hidden w-12 h-12 bg-white p-1 rounded-2xl shadow-md shrink-0 flex items-center justify-center">
-            <img 
-              src={REAL_ALIMENTOS_LOGO} 
-              alt="Real Alimentos" 
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-            />
+          <div className="sm:hidden shrink-0">
+            <RealAlimentosLogo size="md" variant="icon" theme="dark" />
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
             Catálogo Geral <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-red-400">Real Alimentos</span>

@@ -3,6 +3,7 @@ import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { BRANDS, REAL_ALIMENTOS_LOGO } from '../data/brands';
+import { RealAlimentosLogo } from './RealAlimentosLogo';
 import { BrandId, Product } from '../types';
 import { compressImage } from '../services/productCustomizationService';
 import { 
@@ -292,14 +293,7 @@ export function PriceManagerModal() {
         {/* Modal Top Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-white p-1 flex items-center justify-center shadow-md overflow-hidden shrink-0">
-              <img 
-                src={REAL_ALIMENTOS_LOGO} 
-                alt="Real Alimentos" 
-                className="w-full h-full object-contain"
-                referrerPolicy="no-referrer"
-              />
-            </div>
+            <RealAlimentosLogo size="md" variant="icon" theme="dark" />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-extrabold text-white font-serif">

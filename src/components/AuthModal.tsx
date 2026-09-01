@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { RealAlimentosLogo } from './RealAlimentosLogo';
 import { 
   Lock, 
   ShieldCheck, 
@@ -79,9 +80,7 @@ export const AuthModal: React.FC = () => {
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-400">
-              <Lock className="w-5 h-5" />
-            </div>
+            <RealAlimentosLogo size="sm" variant="icon" theme="dark" />
             <div>
               <h3 className="font-bold text-base text-white">Controle de Acesso</h3>
               <p className="text-xs text-slate-300">

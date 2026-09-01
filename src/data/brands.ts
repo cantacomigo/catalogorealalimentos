@@ -1,6 +1,48 @@
 import { Brand, BrandId } from '../types';
 
-export const REAL_ALIMENTOS_LOGO = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1xlaDAHvzBNdTlAPvy3LJMPSthllDwmAIXqL05CAwsHMWsC_anOPfY4U&s=10';
+// High-Definition Crisp Vector Emblem Logo for Real Alimentos
+export const REAL_ALIMENTOS_LOGO = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#DC2626" />
+      <stop offset="60%" stop-color="#991B1B" />
+      <stop offset="100%" stop-color="#7F1D1D" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF08A" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- Outer Rounded Shield -->
+  <rect x="10" y="10" width="180" height="180" rx="36" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="4" filter="url(#shadow)"/>
+  
+  <!-- Subtle Inner Border -->
+  <rect x="18" y="18" width="164" height="164" rx="28" fill="none" stroke="#FDE047" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.7"/>
+
+  <!-- Golden Crown -->
+  <path d="M60 70 L75 42 L100 58 L125 42 L140 70 Z" fill="url(#goldGrad)" stroke="#B45309" stroke-width="2"/>
+  <circle cx="75" cy="40" r="5" fill="#FEF08A" stroke="#B45309" stroke-width="1"/>
+  <circle cx="100" cy="54" r="5.5" fill="#FEF08A" stroke="#B45309" stroke-width="1"/>
+  <circle cx="125" cy="40" r="5" fill="#FEF08A" stroke="#B45309" stroke-width="1"/>
+  
+  <!-- Central Emblem Banner -->
+  <rect x="42" y="74" width="116" height="82" rx="14" fill="#6B1313" stroke="url(#goldGrad)" stroke-width="3"/>
+  
+  <!-- Monogram R -->
+  <path d="M78 88 H104 C113 88 119 93 119 101 C119 107 115 111 109 113 L122 138 H108 L96 115 H89 V138 H78 V88 Z M89 106 H103 C107 106 109 104 109 101 C109 98 107 96 103 96 H89 V106 Z" fill="#FFFFFF" />
+
+  <!-- Stars & Underline -->
+  <polygon points="100,145 103,151 109,151 104,155 106,161 100,157 94,161 96,155 91,151 97,151" fill="url(#goldGrad)" />
+  <line x1="56" y1="153" x2="90" y2="153" stroke="url(#goldGrad)" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="110" y1="153" x2="144" y2="153" stroke="url(#goldGrad)" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
+`)}`;
 
 export const BRANDS: Brand[] = [
   {

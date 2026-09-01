@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { RealAlimentosLogo } from './RealAlimentosLogo';
 import { Order, OrderStatus, SalesRep } from '../types';
 import { updateOrderInFirestore, forwardOrderToCompanyWhatsApp, sendOrderToRepresentativeWhatsApp, safeOpenUrl } from '../services/orderService';
 import { DEFAULT_COMPANY_SETTINGS } from '../data/salesReps';
@@ -241,9 +242,7 @@ export const RepOrderPortalModal: React.FC = () => {
             {/* Header */}
             <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-4 shrink-0 border-b border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-red-600 rounded-xl text-white shadow-sm">
-                  <Users className="w-6 h-6" />
-                </div>
+                <RealAlimentosLogo size="md" variant="icon" theme="dark" />
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-bold font-serif">Área do Vendedor & Gestão de Pedidos</h2>

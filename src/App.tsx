@@ -25,6 +25,7 @@ import { AuthModal } from './components/AuthModal';
 import { Toast } from './components/Toast';
 import { filterAndSortProducts } from './data/products';
 import { REAL_ALIMENTOS_LOGO } from './data/brands';
+import { RealAlimentosLogo } from './components/RealAlimentosLogo';
 import { FilterState, BrandId } from './types';
 import { 
   PackageSearch, 
@@ -185,24 +186,7 @@ function CatalogApp() {
             
             {/* Column 1: Company Logo & Info */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-md overflow-hidden shrink-0">
-                  <img 
-                    src={REAL_ALIMENTOS_LOGO} 
-                    alt="Real Alimentos" 
-                    className="w-full h-full object-contain"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <div>
-                  <span className="font-extrabold text-xl text-white tracking-tight font-serif block">
-                    Real Alimentos
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    Distribuição & Food Service
-                  </span>
-                </div>
-              </div>
+              <RealAlimentosLogo size="lg" variant="full" theme="dark" />
               <p className="text-xs text-slate-400 leading-relaxed">
                 Distribuidora e atacadista de alimentos de alta qualidade. Atendimento para supermercados, padarias, hamburguerias, pizzarias e restaurantes.
               </p>
