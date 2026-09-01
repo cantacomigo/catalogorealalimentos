@@ -22,7 +22,7 @@ import {
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 import { useAuth } from '../context/AuthContext';
-import { TOTAL_PAGES_IN_CATALOG } from '../data/products';
+import { FIRST_CATALOG_PAGE, CATALOG_PAGES_WITH_PRODUCTS } from '../data/products';
 import { REAL_ALIMENTOS_LOGO } from '../data/brands';
 import { RealAlimentosLogo } from './RealAlimentosLogo';
 
@@ -56,6 +56,7 @@ export function Header({
     openEditRepModal
   } = useCart();
   const { 
+    products,
     setIsPriceManagerOpen, 
     setActiveManagerTab, 
     customPricesCount, 
@@ -350,7 +351,7 @@ export function Header({
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                Catálogo (1-55)
+                Catálogo em Páginas
               </button>
             </div>
 
@@ -383,7 +384,10 @@ export function Header({
                     )}
                   </div>
                   <div className="grid grid-cols-6 gap-1 max-h-48 overflow-y-auto p-1">
-                    {Array.from({ length: TOTAL_PAGES_IN_CATALOG }, (_, i) => i + 1).map((pg) => (
+                    {(products && products.length > 0
+                      ? Array.from(new Set(products.map(p => p.pageNumber).filter((pg): pg is number => typeof pg === 'number' && pg >= FIRST_CATALOG_PAGE))).sort((a: number, b: number) => a - b)
+                      : CATALOG_PAGES_WITH_PRODUCTS
+                    ).map((pg: number) => (
                       <button
                         key={pg}
                         onClick={() => {

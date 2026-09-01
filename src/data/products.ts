@@ -16,7 +16,11 @@ export const ALL_PRODUCTS: Product[] = RAW_PRODUCTS.map(p => ({
   imageUrl: p.imageUrl || getProductCatalogImage(p)
 }));
 
+export const FIRST_CATALOG_PAGE = 2;
 export const TOTAL_PAGES_IN_CATALOG = 55;
+export const CATALOG_PAGES_WITH_PRODUCTS: number[] = Array.from(
+  new Set(ALL_PRODUCTS.map(p => p.pageNumber).filter(pg => pg > 1))
+).sort((a, b) => a - b);
 
 export function filterAndSortProducts(
   products: Product[],

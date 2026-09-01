@@ -1,16 +1,12 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { Product } from '../types';
 import { ProductCard } from './ProductCard';
 import { 
   ChevronLeft, 
   ChevronRight, 
-  BookOpen, 
-  Sparkles, 
-  SlidersHorizontal,
-  PackageCheck
+  BookOpen
 } from 'lucide-react';
-import { TOTAL_PAGES_IN_CATALOG } from '../data/products';
-import { BRANDS } from '../data/brands';
+import { FIRST_CATALOG_PAGE } from '../data/products';
 
 interface CatalogBrochureViewProps {
   products: Product[];
@@ -23,12 +19,22 @@ export function CatalogBrochureView({
   selectedPage,
   setSelectedPage
 }: CatalogBrochureViewProps) {
-  const currentPage = selectedPage || 1;
+  // Dynamically obtain all pages that actually contain products (excluding page 1 or empty pages)
+  const pagesList = useMemo(() => {
+    const pageSet = new Set<number>();
+    products.forEach(p => {
+      if (p.pageNumber && p.pageNumber >= FIRST_CATALOG_PAGE) {
+        pageSet.add(p.pageNumber);
+      }
+    });
+    const sorted = Array.from(pageSet).sort((a, b) => a - b);
+    return sorted.length > 0 ? sorted : [FIRST_CATALOG_PAGE];
+  }, [products]);
+
+  const defaultPage = pagesList[0] || FIRST_CATALOG_PAGE;
+  const currentPage = (selectedPage && pagesList.includes(selectedPage)) ? selectedPage : defaultPage;
 
   const pageProducts = products.filter(p => p.pageNumber === currentPage);
-
-  // Group pages info
-  const pagesList = Array.from({ length: TOTAL_PAGES_IN_CATALOG }, (_, i) => i + 1);
 
   const getBrandsOnPage = (pg: number) => {
     const prods = products.filter(p => p.pageNumber === pg);
@@ -36,15 +42,18 @@ export function CatalogBrochureView({
     return brandNames.join(', ');
   };
 
+  const currentIndex = pagesList.indexOf(currentPage);
+  const maxPage = pagesList[pagesList.length - 1] || FIRST_CATALOG_PAGE;
+
   const handleNextPage = () => {
-    if (currentPage < TOTAL_PAGES_IN_CATALOG) {
-      setSelectedPage(currentPage + 1);
+    if (currentIndex >= 0 && currentIndex < pagesList.length - 1) {
+      setSelectedPage(pagesList[currentIndex + 1]);
     }
   };
 
   const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setSelectedPage(currentPage - 1);
+    if (currentIndex > 0) {
+      setSelectedPage(pagesList[currentIndex - 1]);
     }
   };
 
@@ -64,7 +73,7 @@ export function CatalogBrochureView({
             <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
               <span>Folheando Catálogo Real Alimentos</span>
               <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
-                {currentPage} de {TOTAL_PAGES_IN_CATALOG}
+                Pág. {currentPage} (de {pagesList[0]} a {maxPage})
               </span>
             </h2>
             <p className="text-xs text-slate-500 font-medium">
@@ -77,8 +86,8 @@ export function CatalogBrochureView({
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrevPage}
-            disabled={currentPage <= 1}
-            className="flex items-center gap-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            disabled={currentIndex <= 0}
+            className="flex items-center gap-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" /> Anterior
           </button>
@@ -98,8 +107,8 @@ export function CatalogBrochureView({
 
           <button
             onClick={handleNextPage}
-            disabled={currentPage >= TOTAL_PAGES_IN_CATALOG}
-            className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-xs font-bold text-white shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            disabled={currentIndex >= pagesList.length - 1}
+            className="flex items-center gap-1 px-3.5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-xs font-bold text-white shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
           >
             Próxima <ChevronRight className="w-4 h-4" />
           </button>
@@ -116,7 +125,7 @@ export function CatalogBrochureView({
             <button
               key={pg}
               onClick={() => setSelectedPage(pg)}
-              className={`flex flex-col items-center min-w-[50px] py-1.5 px-2 rounded-xl border transition-all shrink-0 ${
+              className={`flex flex-col items-center min-w-[50px] py-1.5 px-2 rounded-xl border transition-all shrink-0 cursor-pointer ${
                 isCurrent
                   ? 'bg-blue-700 border-blue-700 text-white shadow-md scale-105'
                   : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
@@ -144,10 +153,11 @@ export function CatalogBrochureView({
             Página {currentPage} do Catálogo
           </h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
-            Utilize a navegação para explorar as demais páginas do catálogo impresso digitalizado.
+            Utilize a navegação para explorar as páginas com produtos do catálogo.
           </p>
         </div>
       )}
     </div>
   );
 }
+
