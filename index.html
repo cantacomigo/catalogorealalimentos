@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // Prevent extensions and interceptors from throwing TypeError when assigning to window.fetch
+      try {
+        var _fetch = window.fetch;
+        Object.defineProperty(window, 'fetch', {
+          get: function() { return _fetch; },
+          set: function(v) { _fetch = v; },
+          configurable: true,
+          enumerable: true
+        });
+      } catch (e) {}
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Catálogo Interativo Real Alimentos</title>
+    <meta name="description" content="Catálogo digital com todos os produtos Real Alimentos, roteamento de pedidos para vendedores regionais e encaminhamento para faturamento e emissão de Nota Fiscal." />
+    <meta property="og:title" content="Catálogo Interativo Real Alimentos" />
+    <meta property="og:description" content="Catálogo digital com todos os produtos Real Alimentos, roteamento de pedidos para vendedores regionais e encaminhamento para faturamento e emissão de Nota Fiscal." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1xlaDAHvzBNdTlAPvy3LJMPSthllDwmAIXqL05CAwsHMWsC_anOPfY4U&s=10" />
+    <link rel="apple-touch-icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1xlaDAHvzBNdTlAPvy3LJMPSthllDwmAIXqL05CAwsHMWsC_anOPfY4U&s=10" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-slate-50 text-slate-900 antialiased font-sans">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

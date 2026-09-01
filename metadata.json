@@ -1,0 +1,6 @@
+{
+  "name": "Catálogo Interativo Real Alimentos",
+  "description": "Catálogo digital com todos os produtos Real Alimentos, roteamento de pedidos para vendedores regionais e encaminhamento para faturamento e emissão de Nota Fiscal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
