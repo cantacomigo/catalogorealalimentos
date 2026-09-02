@@ -14,6 +14,7 @@ import { CategoryFilter } from './components/CategoryFilter';
 import { FilterControls } from './components/FilterControls';
 import { ProductCard } from './components/ProductCard';
 import { ProductModal } from './components/ProductModal';
+import { ProductImageLightboxModal } from './components/ProductImageLightboxModal';
 import { PriceManagerModal } from './components/PriceManagerModal';
 import { QuickEditModal } from './components/QuickEditModal';
 import { CartDrawer } from './components/CartDrawer';
@@ -265,6 +266,9 @@ function CatalogApp() {
 
       {/* Product Detail Modal */}
       <ProductModal />
+
+      {/* Product Image Lightbox (Full Size View) */}
+      <ProductImageLightboxModal />
 
       {/* Quick Edit Price & Photo Popup */}
       <QuickEditModal />

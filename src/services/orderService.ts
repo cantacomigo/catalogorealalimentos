@@ -20,6 +20,51 @@ export const SALES_REPS_COLLECTION = 'sales_reps';
 
 const LOCAL_ORDERS_KEY = 'real_alimentos_orders_cache_v1';
 const LOCAL_REPS_KEY = 'real_alimentos_reps_cache_v1';
+const LOCAL_DELETED_REPS_KEY = 'real_alimentos_deleted_reps_v1';
+
+/**
+ * Sanitize and clean a SalesRep object for Firestore storage.
+ * CRITICAL: Firestore throws 'Unsupported field value: undefined' if any field is undefined.
+ */
+export function sanitizeSalesRepForFirestore(rep: Partial<SalesRep>): Record<string, any> {
+  const clean: Record<string, any> = {
+    id: rep.id || `rep-${Date.now()}`,
+    name: (rep.name || 'Vendedor').trim(),
+    code: (rep.code || 'RTV-01').trim().toUpperCase(),
+    phone: (rep.phone || '').replace(/\D/g, ''),
+    regionName: (rep.regionName || 'Geral').trim(),
+    cities: Array.isArray(rep.cities) ? rep.cities.map(c => String(c).trim()).filter(Boolean) : [],
+    isActive: rep.isActive !== false,
+    updatedAt: new Date().toISOString()
+  };
+
+  clean.password = rep.password && rep.password.trim() ? rep.password.trim() : '1234';
+
+  if (rep.lastPasswordChange) {
+    clean.lastPasswordChange = rep.lastPasswordChange;
+  }
+
+  if (rep.email && typeof rep.email === 'string' && rep.email.trim()) {
+    clean.email = rep.email.trim();
+  }
+
+  if (rep.notes && typeof rep.notes === 'string' && rep.notes.trim()) {
+    clean.notes = rep.notes.trim();
+  }
+
+  if (rep.avatarUrl && typeof rep.avatarUrl === 'string' && rep.avatarUrl.trim()) {
+    clean.avatarUrl = rep.avatarUrl.trim();
+  }
+
+  // Double check: strictly remove any key that is undefined
+  Object.keys(clean).forEach((k) => {
+    if (clean[k] === undefined) {
+      delete clean[k];
+    }
+  });
+
+  return clean;
+}
 
 /**
  * Generate human-friendly Unique Order ID: PED-YYYYMMDD-XXXX
@@ -336,6 +381,10 @@ export async function forwardOrderToCompanyWhatsApp(
 
 /**
  * Subscribe to Real-Time Sales Representatives from Firestore
+ * Features:
+ * - Two-way reconciliation: prevents Firestore snapshots from wiping newly registered local reps.
+ * - Auto-sync: automatically syncs any local reps missing in the cloud to Firestore.
+ * - Deletion tracking: respects deleted reps so they aren't resurrected.
  */
 export function subscribeToSalesReps(
   onUpdate: (reps: SalesRep[]) => void,
@@ -347,39 +396,88 @@ export function subscribeToSalesReps(
     return onSnapshot(
       repsCol,
       async (snapshot) => {
+        // Read locally cached reps and deletion registry
+        let cachedReps: SalesRep[] = [];
+        let deletedIds: string[] = [];
+        try {
+          cachedReps = JSON.parse(localStorage.getItem(LOCAL_REPS_KEY) || '[]');
+          deletedIds = JSON.parse(localStorage.getItem(LOCAL_DELETED_REPS_KEY) || '[]');
+        } catch {}
+
         if (snapshot.empty) {
-          // If Firestore is empty, seed with initial sales reps
-          console.log('Seeding initial sales reps to Firestore...');
-          const initialList = [...INITIAL_SALES_REPS];
+          // If Firestore is completely empty, seed with initial sales reps + any existing un-deleted local reps!
+          console.log('[Firestore] Seeding initial sales reps to Firestore...');
+          const combinedMap = new Map<string, SalesRep>();
+          INITIAL_SALES_REPS.forEach(r => combinedMap.set(r.id, r));
+          cachedReps.forEach(r => {
+            if (!deletedIds.includes(r.id)) {
+              combinedMap.set(r.id, r);
+            }
+          });
+
+          const toSeed = Array.from(combinedMap.values());
           try {
             const batch = writeBatch(db);
-            initialList.forEach(rep => {
+            toSeed.forEach(rep => {
+              const clean = sanitizeSalesRepForFirestore(rep);
               const ref = doc(db, SALES_REPS_COLLECTION, rep.id);
-              batch.set(ref, rep);
+              batch.set(ref, clean);
             });
             await batch.commit();
+            console.log('[Firestore] Initial reps seeded successfully.');
           } catch (seedErr) {
-            console.warn('Failed to seed initial reps to Firestore:', seedErr);
+            console.warn('[Firestore] Failed to seed reps batch:', seedErr);
           }
-          localStorage.setItem(LOCAL_REPS_KEY, JSON.stringify(initialList));
-          onUpdate(initialList);
+          localStorage.setItem(LOCAL_REPS_KEY, JSON.stringify(toSeed));
+          onUpdate(toSeed);
           return;
         }
 
-        const list: SalesRep[] = [];
+        const firestoreList: SalesRep[] = [];
+        const firestoreIds = new Set<string>();
+
         snapshot.forEach((d) => {
-          list.push({ ...(d.data() as SalesRep), id: d.id });
-        });
-        
-        // Sort: active first, then code
-        list.sort((a, b) => {
-          if (a.isActive && !b.isActive) return -1;
-          if (!a.isActive && b.isActive) return 1;
-          return a.code.localeCompare(b.code);
+          const rep = { ...(d.data() as SalesRep), id: d.id };
+          // If marked deleted locally by admin, remove from Firestore
+          if (deletedIds.includes(d.id)) {
+            deleteDoc(doc(db, SALES_REPS_COLLECTION, d.id)).catch(() => {});
+            return;
+          }
+          firestoreList.push(rep);
+          firestoreIds.add(d.id);
         });
 
-        localStorage.setItem(LOCAL_REPS_KEY, JSON.stringify(list));
-        onUpdate(list);
+        // RECONCILIATION: Check if any locally added seller was not yet synced to Firestore!
+        // This ensures that newly registered sellers NEVER disappear when Firestore refreshes!
+        const missingFromFirestore = cachedReps.filter(
+          localRep => !firestoreIds.has(localRep.id) && !deletedIds.includes(localRep.id)
+        );
+
+        if (missingFromFirestore.length > 0) {
+          console.log(`[Firestore] Syncing ${missingFromFirestore.length} locally created sales reps to Firestore...`);
+          // Save missing reps to Firestore in background with sanitization
+          missingFromFirestore.forEach(async (rep) => {
+            try {
+              const clean = sanitizeSalesRepForFirestore(rep);
+              await setDoc(doc(db, SALES_REPS_COLLECTION, rep.id), clean, { merge: true });
+              console.log(`[Firestore] Successfully synced local rep ${rep.id} (${rep.name}) to Firestore.`);
+            } catch (syncErr) {
+              console.warn(`[Firestore] Failed to background-sync local rep ${rep.id}:`, syncErr);
+            }
+          });
+          // Include them in the merged list so they are immediately visible and preserved in state
+          firestoreList.push(...missingFromFirestore);
+        }
+
+        // Sort: active first, then by code
+        firestoreList.sort((a, b) => {
+          if (a.isActive && !b.isActive) return -1;
+          if (!a.isActive && b.isActive) return 1;
+          return (a.code || '').localeCompare(b.code || '');
+        });
+
+        localStorage.setItem(LOCAL_REPS_KEY, JSON.stringify(firestoreList));
+        onUpdate(firestoreList);
       },
       (err) => {
         console.error('Error in onSnapshot sales_reps:', err);
@@ -408,40 +506,65 @@ export function subscribeToSalesReps(
  * Save or update a Sales Representative in Firestore and local cache
  */
 export async function saveSalesRepInFirestore(rep: SalesRep): Promise<void> {
-  try {
-    const repRef = doc(db, SALES_REPS_COLLECTION, rep.id);
-    await setDoc(repRef, rep, { merge: true });
-  } catch (err) {
-    console.warn('Could not save sales rep to Firestore, saving locally:', err);
-  }
+  const cleanData = sanitizeSalesRepForFirestore(rep) as SalesRep;
 
-  // Update local cache
+  // 1. Remove from deleted registry if it was previously marked deleted
+  try {
+    const deletedIds: string[] = JSON.parse(localStorage.getItem(LOCAL_DELETED_REPS_KEY) || '[]');
+    const filteredDeleted = deletedIds.filter(id => id !== cleanData.id);
+    localStorage.setItem(LOCAL_DELETED_REPS_KEY, JSON.stringify(filteredDeleted));
+  } catch {}
+
+  // 2. Immediately update local storage so user has zero latency and offline persistence
   try {
     const cached: SalesRep[] = JSON.parse(localStorage.getItem(LOCAL_REPS_KEY) || '[]');
-    const index = cached.findIndex(r => r.id === rep.id);
+    const index = cached.findIndex(r => r.id === cleanData.id);
     let updated: SalesRep[];
     if (index >= 0) {
       updated = [...cached];
-      updated[index] = rep;
+      updated[index] = cleanData;
     } else {
-      updated = [rep, ...cached];
+      updated = [cleanData, ...cached];
     }
     localStorage.setItem(LOCAL_REPS_KEY, JSON.stringify(updated));
-  } catch {}
+  } catch (e) {
+    console.warn('Failed to update local sales reps cache:', e);
+  }
+
+  // 3. Persist to Firestore with sanitized payload (no unsupported undefined values)
+  try {
+    const repRef = doc(db, SALES_REPS_COLLECTION, cleanData.id);
+    await setDoc(repRef, cleanData, { merge: true });
+    console.log(`[Firestore] Successfully saved sales rep ${cleanData.id} (${cleanData.name})`);
+  } catch (err) {
+    console.error('CRITICAL: Error saving sales rep to Firestore:', err);
+    throw err;
+  }
 }
 
 /**
  * Delete a Sales Representative from Firestore and local cache
  */
 export async function deleteSalesRepFromFirestore(repId: string): Promise<void> {
+  // 1. Mark in deleted tracking list to avoid reconciliation resurrection
+  try {
+    const deletedIds: string[] = JSON.parse(localStorage.getItem(LOCAL_DELETED_REPS_KEY) || '[]');
+    if (!deletedIds.includes(repId)) {
+      deletedIds.push(repId);
+      localStorage.setItem(LOCAL_DELETED_REPS_KEY, JSON.stringify(deletedIds));
+    }
+  } catch {}
+
+  // 2. Delete from Firestore
   try {
     const repRef = doc(db, SALES_REPS_COLLECTION, repId);
     await deleteDoc(repRef);
+    console.log(`[Firestore] Successfully deleted sales rep ${repId}`);
   } catch (err) {
     console.warn('Could not delete sales rep from Firestore:', err);
   }
 
-  // Update local cache
+  // 3. Update local cache
   try {
     const cached: SalesRep[] = JSON.parse(localStorage.getItem(LOCAL_REPS_KEY) || '[]');
     const updated = cached.filter(r => r.id !== repId);
@@ -453,6 +576,11 @@ export async function deleteSalesRepFromFirestore(repId: string): Promise<void> 
  * Reset all Sales Reps to default initial list
  */
 export async function resetSalesRepsToDefault(): Promise<void> {
+  // Clear deleted tracking list
+  try {
+    localStorage.removeItem(LOCAL_DELETED_REPS_KEY);
+  } catch {}
+
   try {
     const repsCol = collection(db, SALES_REPS_COLLECTION);
     const snap = await getDocs(repsCol);
@@ -461,8 +589,9 @@ export async function resetSalesRepsToDefault(): Promise<void> {
       batch.delete(d.ref);
     });
     INITIAL_SALES_REPS.forEach((rep) => {
+      const clean = sanitizeSalesRepForFirestore(rep);
       const ref = doc(db, SALES_REPS_COLLECTION, rep.id);
-      batch.set(ref, rep);
+      batch.set(ref, clean);
     });
     await batch.commit();
   } catch (err) {

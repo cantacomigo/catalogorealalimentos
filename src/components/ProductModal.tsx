@@ -15,13 +15,15 @@ import {
   Check, 
   Edit3, 
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ZoomIn,
+  Maximize2
 } from 'lucide-react';
 import { BRANDS } from '../data/brands';
 
 export function ProductModal() {
   const { selectedProductForModal, setSelectedProductForModal, addToCart } = useCart();
-  const { products, setEditingProductForPrice } = useProducts();
+  const { products, setEditingProductForPrice, setPreviewProductImage } = useProducts();
   const { isAdmin } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [unitType, setUnitType] = useState<'unidade' | 'caixa' | 'fardo'>('unidade');
@@ -80,12 +82,16 @@ export function ProductModal() {
           <div className="flex flex-col sm:flex-row gap-4 items-center bg-gradient-to-br from-slate-50 to-blue-50/40 p-4 rounded-3xl border border-slate-200/80 relative">
             
             {/* Product Photo */}
-            <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-2xl bg-white shadow-md overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
+            <div 
+              onClick={() => setPreviewProductImage(product)}
+              className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-2xl bg-white shadow-md overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center cursor-pointer group/img hover:border-blue-300 transition-all"
+              title="Clique para abrir imagem em tamanho grande"
+            >
               {product.imageUrl && !imgError ? (
                 <img 
                   src={product.imageUrl} 
                   alt={product.name} 
-                  className="w-full h-full object-contain p-1.5 hover:scale-105 transition-transform"
+                  className="w-full h-full object-contain p-1.5 group-hover/img:scale-105 transition-transform"
                   referrerPolicy="no-referrer"
                   onError={() => setImgError(true)}
                 />
@@ -96,13 +102,23 @@ export function ProductModal() {
                 </div>
               )}
 
-              <button
-                onClick={() => setEditingProductForPrice(product)}
-                className="absolute bottom-1.5 right-1.5 p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-900 text-white text-[10px] font-bold flex items-center gap-1 shadow-md transition-all"
-                title="Trocar foto do produto"
-              >
-                <Camera className="w-3 h-3" />
-              </button>
+              {/* Zoom overlay indicator */}
+              <div className="absolute top-1.5 left-1.5 p-1 rounded-lg bg-slate-900/70 hover:bg-slate-900 text-white text-[10px] flex items-center gap-1 shadow-sm opacity-80 group-hover/img:opacity-100 transition-all">
+                <ZoomIn className="w-3 h-3 text-blue-400" />
+              </div>
+
+              {isAdmin && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingProductForPrice(product);
+                  }}
+                  className="absolute bottom-1.5 right-1.5 p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-900 text-white text-[10px] font-bold flex items-center gap-1 shadow-md transition-all cursor-pointer"
+                  title="Trocar foto do produto (Admin)"
+                >
+                  <Camera className="w-3 h-3" />
+                </button>
+              )}
             </div>
 
             <div className="space-y-1.5 text-center sm:text-left flex-1">

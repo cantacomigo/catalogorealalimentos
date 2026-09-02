@@ -178,19 +178,18 @@ export const SalesRepFormModal: React.FC = () => {
         id: repId,
         name: name.trim(),
         code: code.trim().toUpperCase(),
-        password: password.trim(),
+        password: password.trim() || '1234',
         lastPasswordChange: new Date().toISOString(),
         phone: formattedPhone,
-        email: email.trim() || undefined,
+        email: email.trim() || '',
         regionName: regionName.trim(),
         cities,
-        notes: notes.trim() || undefined,
-        avatarUrl: avatarUrl.trim() || undefined,
+        notes: notes.trim() || '',
+        avatarUrl: avatarUrl.trim() || '',
         isActive
       };
 
       await saveSalesRep(repData);
-      showToast(`Vendedor ${name.trim()} salvo com sucesso!`);
       setIsRepFormModalOpen(false);
     } catch (err: any) {
       console.error('Error saving sales rep:', err);

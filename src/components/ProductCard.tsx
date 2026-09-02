@@ -10,11 +10,13 @@ import {
   Snowflake, 
   ThermometerSnowflake, 
   Sun, 
-  Info,
-  Check,
-  Package,
-  Edit3,
-  Camera
+  Info, 
+  Check, 
+  Package, 
+  Edit3, 
+  Camera,
+  ZoomIn,
+  Maximize2
 } from 'lucide-react';
 import { BRANDS } from '../data/brands';
 
@@ -25,7 +27,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const { addToCart, setSelectedProductForModal, cart } = useCart();
-  const { setEditingProductForPrice } = useProducts();
+  const { setEditingProductForPrice, setPreviewProductImage } = useProducts();
   const { isAdmin } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [unitType, setUnitType] = useState<'unidade' | 'caixa' | 'fardo'>('unidade');
@@ -137,13 +139,23 @@ export function ProductCard({ product }: ProductCardProps) {
 
           {/* Quick info icon & edit photo trigger */}
           <div className="absolute top-2 right-2 flex items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewProductImage(product);
+              }}
+              className="p-1.5 rounded-full bg-white/95 text-slate-700 hover:text-blue-700 hover:bg-white shadow-sm transition-all cursor-pointer group-hover:scale-105"
+              title="Abrir imagem em tamanho grande"
+            >
+              <ZoomIn className="w-3.5 h-3.5 text-blue-600" />
+            </button>
             {isAdmin && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setEditingProductForPrice(product);
                 }}
-                className="p-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 shadow-sm transition-all"
+                className="p-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 shadow-sm transition-all cursor-pointer"
                 title="Editar valor ou foto deste produto (Admin)"
               >
                 <Edit3 className="w-3.5 h-3.5" />
@@ -154,8 +166,8 @@ export function ProductCard({ product }: ProductCardProps) {
                 e.stopPropagation();
                 setSelectedProductForModal(product);
               }}
-              className="p-1.5 rounded-full bg-white/90 text-slate-600 hover:text-blue-700 hover:bg-white shadow-sm transition-all"
-              title="Ver detalhes"
+              className="p-1.5 rounded-full bg-white/90 text-slate-600 hover:text-blue-700 hover:bg-white shadow-sm transition-all cursor-pointer"
+              title="Ver detalhes completos"
             >
               <Info className="w-3.5 h-3.5" />
             </button>

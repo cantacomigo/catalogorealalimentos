@@ -50,6 +50,8 @@ interface ProductContextType {
   setActiveManagerTab: (tab: 'prices' | 'stock' | 'logs') => void;
   editingProductForPrice: Product | null;
   setEditingProductForPrice: (product: Product | null) => void;
+  previewProductImage: Product | null;
+  setPreviewProductImage: (product: Product | null) => void;
   getProductById: (id: string) => Product | undefined;
 }
 
@@ -103,6 +105,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [isStockManagerOpen, setIsStockManagerOpen] = useState(false);
   const [activeManagerTab, setActiveManagerTab] = useState<'prices' | 'stock' | 'logs'>('prices');
   const [editingProductForPrice, setEditingProductForPrice] = useState<Product | null>(null);
+  const [previewProductImage, setPreviewProductImage] = useState<Product | null>(null);
 
   // Initial local to Firestore migration (runs once if local data exists)
   useEffect(() => {
@@ -566,6 +569,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         setActiveManagerTab,
         editingProductForPrice,
         setEditingProductForPrice,
+        previewProductImage,
+        setPreviewProductImage,
         getProductById
       }}
     >

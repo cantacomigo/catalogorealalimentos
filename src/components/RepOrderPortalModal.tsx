@@ -78,6 +78,7 @@ export const RepOrderPortalModal: React.FC = () => {
   const [repNewPasswordInput, setRepNewPasswordInput] = useState<string>('');
   const [showNewPassModalInput, setShowNewPassModalInput] = useState<boolean>(false);
   const [isSavingPassword, setIsSavingPassword] = useState<boolean>(false);
+  const [showConfirmRestoreReps, setShowConfirmRestoreReps] = useState<boolean>(false);
 
   // Initialize filter
   useEffect(() => {
@@ -912,7 +913,7 @@ export const RepOrderPortalModal: React.FC = () => {
 
                   <div className="flex flex-wrap items-center gap-2.5">
                     <button
-                      onClick={resetSalesReps}
+                      onClick={() => setShowConfirmRestoreReps(true)}
                       className="text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                       title="Restaurar lista de vendedores para os 5 padrões iniciais"
                     >
@@ -1289,6 +1290,47 @@ export const RepOrderPortalModal: React.FC = () => {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Restore Default Sales Reps Modal */}
+      {showConfirmRestoreReps && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-amber-600 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center border border-amber-200">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Restaurar Vendedores Padrão?</h3>
+                <p className="text-xs text-slate-500">Atenção à redefinição da equipe</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 mb-6 leading-relaxed">
+              Esta ação redefinirá a equipe comercial para os <strong>5 vendedores padrão</strong> originais da Real Alimentos. Vendedores cadastrados manualmente que não estiverem na lista padrão serão removidos.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowConfirmRestoreReps(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowConfirmRestoreReps(false);
+                  await resetSalesReps();
+                }}
+                className="px-4 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+              >
+                Sim, Restaurar Padrões
+              </button>
             </div>
           </div>
         </div>

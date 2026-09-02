@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { RealAlimentosLogo } from './RealAlimentosLogo';
@@ -43,6 +43,12 @@ export const AuthModal: React.FC = () => {
   const [repPassword, setRepPassword] = useState('');
   const [showRepPass, setShowRepPass] = useState(false);
   const [repError, setRepError] = useState('');
+
+  useEffect(() => {
+    if ((!selectedRepId || !salesReps.some(r => r.id === selectedRepId)) && salesReps.length > 0) {
+      setSelectedRepId(salesReps[0].id);
+    }
+  }, [salesReps, selectedRepId]);
 
   if (!authModalOpen) return null;
 
