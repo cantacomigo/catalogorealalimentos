@@ -15,6 +15,7 @@ import {
 import {
   subscribeToProductCustomizations,
   saveProductCustomizationInFirestore,
+  saveBulkPricesInFirestore,
   resetProductCustomizationInFirestore,
   syncLocalCustomizationsToFirestore,
   subscribeToCustomProducts,
@@ -43,6 +44,7 @@ interface ProductContextType {
     minStockAlert?: number
   ) => Promise<Product>;
   deleteProduct: (productId: string) => Promise<void>;
+  forceSyncAllToCloud: () => Promise<number>;
   bulkAdjustStock: (productIds: string[], amount: number, reason?: string) => Promise<number>;
   seedInitialStock: (defaultQty?: number) => Promise<number>;
   deductOrderStock: (items: Array<{ productId: string; productName: string; quantity: number }>) => Promise<void>;
@@ -362,14 +364,19 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     const combinedRaw = [...standaloneCustomProducts, ...mergedBaseProducts];
 
     return combinedRaw.map((raw) => {
-      const hasCustomPrice = customPrices[raw.id] !== undefined;
-      const hasCustomImage = customImages[raw.id] !== undefined;
+      const stockDoc = stockMap[raw.id];
+      const hasCustomPrice = customPrices[raw.id] !== undefined || stockDoc?.customPrice !== undefined;
+      const hasCustomImage = customImages[raw.id] !== undefined || Boolean(stockDoc?.customImage);
 
-      const effectivePrice = hasCustomPrice ? customPrices[raw.id] : raw.suggestedPrice;
-      const effectiveImage = hasCustomImage ? customImages[raw.id] : raw.imageUrl;
+      const effectivePrice =
+        customPrices[raw.id] !== undefined
+          ? customPrices[raw.id]
+          : stockDoc?.customPrice !== undefined
+          ? stockDoc.customPrice
+          : raw.suggestedPrice;
+      const effectiveImage = customImages[raw.id] || stockDoc?.customImage || raw.imageUrl;
 
       // Stock from Firebase or default
-      const stockDoc = stockMap[raw.id];
       const stockQuantity = stockDoc !== undefined ? stockDoc.stockQuantity : (raw.stockQuantity ?? DEFAULT_INITIAL_STOCK);
       const minStockAlert = stockDoc?.minStockAlert ?? (raw.minStockAlert ?? DEFAULT_MIN_ALERT);
       const isOutOfStock = stockQuantity <= 0;
@@ -606,6 +613,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
   const applyBulkPriceAdjustment = (adj: BulkPriceAdjustment) => {
     let count = 0;
+    const batchToSync: Record<string, number> = {};
     setCustomPrices((prev) => {
       const next = { ...prev };
       products.forEach((p) => {
@@ -631,12 +639,37 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         adjusted = Number(adjusted.toFixed(2));
 
         next[p.id] = adjusted;
+        batchToSync[p.id] = adjusted;
         count++;
       });
       return next;
     });
 
+    if (Object.keys(batchToSync).length > 0) {
+      saveBulkPricesInFirestore(batchToSync).catch((err) => {
+        console.warn('Failed to sync bulk prices to Firestore:', err);
+      });
+    }
+
     return { updatedCount: count };
+  };
+
+  const forceSyncAllToCloud = async (): Promise<number> => {
+    let syncedCount = 0;
+    await syncLocalCustomProductsToFirestore(customProductsMap);
+    syncedCount += Object.keys(customProductsMap).length;
+
+    if (Object.keys(customPrices).length > 0) {
+      await saveBulkPricesInFirestore(customPrices);
+      syncedCount += Object.keys(customPrices).length;
+    }
+
+    if (Object.keys(customImages).length > 0) {
+      await syncLocalCustomizationsToFirestore(customPrices, customImages);
+      syncedCount += Object.keys(customImages).length;
+    }
+
+    return syncedCount;
   };
 
   const resetProductToDefault = (productId: string) => {
@@ -762,10 +795,13 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
       if (count > 0) {
         setCustomPrices((prev) => ({ ...prev, ...importedPrices }));
+        saveBulkPricesInFirestore(importedPrices).catch((err) => {
+          console.warn('Failed to sync imported prices to Firestore:', err);
+        });
         return {
           success: true,
           importedCount: count,
-          message: `${count} preços de produtos foram importados e aplicados com sucesso!`
+          message: `${count} preços de produtos foram importados e sincronizados no Firebase!`
         };
       } else {
         return {
@@ -803,6 +839,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         updateProductStock,
         saveCustomProduct,
         deleteProduct,
+        forceSyncAllToCloud,
         bulkAdjustStock,
         seedInitialStock,
         deductOrderStock,

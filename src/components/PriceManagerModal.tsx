@@ -70,8 +70,23 @@ export function PriceManagerModal() {
     setActiveManagerTab,
     openCreateProductModal,
     openEditProductModal,
-    deleteProduct
+    deleteProduct,
+    forceSyncAllToCloud
   } = useProducts();
+
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
+  const handleForceCloudSync = async () => {
+    setIsSyncingCloud(true);
+    try {
+      const count = await forceSyncAllToCloud();
+      showToast(`Sincronização concluída! Dados enviados para o Firebase / Vercel (${count} registros).`);
+    } catch (e: any) {
+      showToast(`Erro ao sincronizar: ${e?.message || 'Verifique a conexão'}`);
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
 
   const getCategoryLabel = (catId: string) => {
     const found = CATEGORIES.find(c => c.id === catId);
@@ -1087,18 +1102,30 @@ export function PriceManagerModal() {
         )}
 
         {/* Modal Footer */}
-        <div className="p-3.5 bg-slate-900 text-slate-300 border-t border-slate-800 flex items-center justify-between text-xs">
+        <div className="p-3.5 bg-slate-900 text-slate-300 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-emerald-400" />
             <span>Sincronização com Cloud Firestore Realtime ativa</span>
           </div>
 
-          <button
-            onClick={() => setIsPriceManagerOpen(false)}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-sm transition-all cursor-pointer"
-          >
-            Fechar Painel
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleForceCloudSync}
+              disabled={isSyncingCloud}
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-bold rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              title="Forçar envio imediato de todos os preços, fotos e itens cadastrados para o Firebase e Vercel"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin' : ''}`} />
+              <span>{isSyncingCloud ? 'Sincronizando...' : 'Sincronizar Dados com Nuvem / Vercel'}</span>
+            </button>
+
+            <button
+              onClick={() => setIsPriceManagerOpen(false)}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              Fechar Painel
+            </button>
+          </div>
         </div>
 
         {/* Modal de Confirmação: Inicializar Firestore */}

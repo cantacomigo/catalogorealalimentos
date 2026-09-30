@@ -1,11 +1,13 @@
 import { 
   db, 
+  STOCK_COLLECTION,
   collection, 
   doc, 
   setDoc, 
   getDocs, 
   deleteDoc, 
-  onSnapshot 
+  onSnapshot,
+  writeBatch
 } from '../lib/firebase';
 import { Product } from '../types';
 
@@ -299,29 +301,77 @@ export function subscribeToProductCustomizations(
 }
 
 /**
- * Save or update a product's photo and/or price in Firestore
+ * Save or update a product's photo and/or price in Firestore (both product_customizations and stock)
  */
 export async function saveProductCustomizationInFirestore(
   productId: string,
   data: { customImageUrl?: string; customPrice?: number }
 ): Promise<void> {
   try {
+    const now = new Date().toISOString();
     const docRef = doc(db, PRODUCT_CUSTOMIZATIONS_COLLECTION, productId);
-    const payload: Partial<ProductCustomizationDoc> = {
+    const payload: Record<string, any> = {
       productId,
-      updatedAt: new Date().toISOString()
+      updatedAt: now
+    };
+    const stockPayload: Record<string, any> = {
+      productId,
+      lastUpdated: now
     };
 
     if (data.customImageUrl !== undefined) {
       payload.customImageUrl = data.customImageUrl;
+      stockPayload.customImage = data.customImageUrl;
     }
     if (data.customPrice !== undefined) {
       payload.customPrice = data.customPrice;
+      stockPayload.customPrice = data.customPrice;
     }
 
-    await setDoc(docRef, payload, { merge: true });
+    await Promise.all([
+      setDoc(docRef, payload, { merge: true }),
+      setDoc(doc(db, STOCK_COLLECTION, productId), stockPayload, { merge: true })
+    ]);
   } catch (err) {
     console.warn(`Failed to save customization for product ${productId} in Firestore:`, err);
+    throw err;
+  }
+}
+
+/**
+ * Save multiple product prices in batch to Firestore (used by Reajuste em Massa & Importar CSV)
+ */
+export async function saveBulkPricesInFirestore(
+  pricesMap: Record<string, number>
+): Promise<void> {
+  try {
+    const entries = Object.entries(pricesMap);
+    if (entries.length === 0) return;
+
+    const now = new Date().toISOString();
+    // Firestore batch limit is 500 operations; chunk into groups of 200 products (400 ops)
+    const chunkSize = 200;
+    for (let i = 0; i < entries.length; i += chunkSize) {
+      const chunk = entries.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      for (const [pid, price] of chunk) {
+        if (!pid || typeof price !== 'number' || isNaN(price)) continue;
+        const cleanPrice = Number(price.toFixed(2));
+        batch.set(
+          doc(db, PRODUCT_CUSTOMIZATIONS_COLLECTION, pid),
+          { productId: pid, customPrice: cleanPrice, updatedAt: now },
+          { merge: true }
+        );
+        batch.set(
+          doc(db, STOCK_COLLECTION, pid),
+          { productId: pid, customPrice: cleanPrice, lastUpdated: now },
+          { merge: true }
+        );
+      }
+      await batch.commit();
+    }
+  } catch (err) {
+    console.warn('Failed to save bulk prices in Firestore:', err);
     throw err;
   }
 }
