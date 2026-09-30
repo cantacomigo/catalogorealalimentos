@@ -50,6 +50,7 @@ export interface Product {
   imageUrl?: string;
   isCustomPrice?: boolean;
   isCustomImage?: boolean;
+  isCustomProduct?: boolean;
   highlight?: string;
   barcode?: string;
   stockQuantity?: number;

@@ -1,5 +1,7 @@
 import { Dispatch, SetStateAction } from 'react';
 import { FilterState } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { useProducts } from '../context/ProductContext';
 import { 
   Snowflake, 
   ThermometerSnowflake, 
@@ -7,7 +9,8 @@ import {
   ArrowUpDown, 
   X, 
   Tag, 
-  BookOpen
+  BookOpen,
+  PlusCircle
 } from 'lucide-react';
 
 interface FilterControlsProps {
@@ -38,6 +41,9 @@ export function FilterControls({
   totalCatalogCount,
   tempCounts
 }: FilterControlsProps) {
+  const { isAdmin } = useAuth();
+  const { openCreateProductModal } = useProducts();
+
   const hasActiveFilters = 
     filters.searchQuery ||
     filters.selectedBrand !== 'todas' ||
@@ -64,7 +70,7 @@ export function FilterControls({
       <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-100">
         
         {/* Counter */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <span className="text-xs font-bold text-slate-800">
             Exibindo <span className="text-blue-700 font-extrabold">{totalMatches}</span> de {totalCatalogCount} produtos
           </span>
@@ -72,6 +78,16 @@ export function FilterControls({
             <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md">
               <BookOpen className="w-3 h-3" /> Pág. {filters.selectedPage}
             </span>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => openCreateProductModal()}
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+              title="Cadastrar um novo produto individualmente no catálogo"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>+ Cadastrar Item</span>
+            </button>
           )}
         </div>
 

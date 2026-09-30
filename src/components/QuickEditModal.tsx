@@ -14,6 +14,7 @@ export function QuickEditModal() {
     updateProductImage, 
     updateProductStock,
     resetProductToDefault,
+    openEditProductModal,
     firebaseSyncState
   } = useProducts();
   const { showToast } = useCart();
@@ -135,6 +136,17 @@ export function QuickEditModal() {
           <p className="text-xs text-slate-500">
             {product.weight} • {product.packageType} • Pág. {product.pageNumber}
           </p>
+          <button
+            type="button"
+            onClick={() => {
+              const target = product;
+              setEditingProductForPrice(null);
+              openEditProductModal(target);
+            }}
+            className="mt-2 w-full py-1.5 px-3 bg-slate-100 hover:bg-blue-50 text-blue-700 border border-slate-200 hover:border-blue-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <span>Editar Cadastro Completo (Nome, Marca, Categoria...)</span>
+          </button>
         </div>
 
         {/* Stock Management Box (Firebase Synced) */}

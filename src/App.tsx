@@ -17,6 +17,7 @@ import { ProductModal } from './components/ProductModal';
 import { ProductImageLightboxModal } from './components/ProductImageLightboxModal';
 import { PriceManagerModal } from './components/PriceManagerModal';
 import { QuickEditModal } from './components/QuickEditModal';
+import { ProductFormModal } from './components/ProductFormModal';
 import { CartDrawer } from './components/CartDrawer';
 import { CatalogBrochureView } from './components/CatalogBrochureView';
 import { OrderConfirmationModal } from './components/OrderConfirmationModal';
@@ -272,6 +273,9 @@ function CatalogApp() {
 
       {/* Quick Edit Price & Photo Popup */}
       <QuickEditModal />
+
+      {/* Individual Product Add/Edit Full Modal */}
+      <ProductFormModal />
 
       {/* Master Price & Catalog Manager Modal */}
       <PriceManagerModal />

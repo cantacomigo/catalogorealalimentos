@@ -70,6 +70,10 @@
     "orders": {
       "entity": "Order",
       "description": "Pedidos gerados pelos clientes para os representantes e encaminhados para emissão de nota fiscal pela empresa"
+    },
+    "custom_products": {
+      "entity": "ProductStock",
+      "description": "Produtos cadastrados ou editados individualmente pelo administrador em tempo real"
     }
   }
 }

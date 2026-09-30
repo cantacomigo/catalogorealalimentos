@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react';
-import { Product, BulkPriceAdjustment, ProductStock, StockMovementLog } from '../types';
+import { Product, BulkPriceAdjustment, ProductStock, StockMovementLog, BrandId } from '../types';
 import { ALL_PRODUCTS } from '../data/products';
 import { 
   subscribeToStock, 
@@ -16,8 +16,14 @@ import {
   subscribeToProductCustomizations,
   saveProductCustomizationInFirestore,
   resetProductCustomizationInFirestore,
-  syncLocalCustomizationsToFirestore
+  syncLocalCustomizationsToFirestore,
+  subscribeToCustomProducts,
+  saveCustomProductInFirestore,
+  deleteProductInFirestore,
+  subscribeToDeletedProducts,
+  syncLocalCustomProductsToFirestore
 } from '../services/productCustomizationService';
+import { getProductCatalogImage } from '../data/productImages';
 
 interface ProductContextType {
   products: Product[];
@@ -25,11 +31,18 @@ interface ProductContextType {
   firebaseSyncState: FirebaseSyncState;
   customPricesCount: number;
   customImagesCount: number;
+  customProductsCount: number;
   lowStockCount: number;
   outOfStockCount: number;
   updateProductPrice: (productId: string, newPrice: number) => void;
   updateProductImage: (productId: string, newImageUrl: string) => void;
   updateProductStock: (productId: string, newQty: number, reason?: string, minAlert?: number) => Promise<void>;
+  saveCustomProduct: (
+    productData: Omit<Product, 'id'> & { id?: string },
+    initialStock?: number,
+    minStockAlert?: number
+  ) => Promise<Product>;
+  deleteProduct: (productId: string) => Promise<void>;
   bulkAdjustStock: (productIds: string[], amount: number, reason?: string) => Promise<number>;
   seedInitialStock: (defaultQty?: number) => Promise<number>;
   deductOrderStock: (items: Array<{ productId: string; productName: string; quantity: number }>) => Promise<void>;
@@ -50,6 +63,11 @@ interface ProductContextType {
   setActiveManagerTab: (tab: 'prices' | 'stock' | 'logs') => void;
   editingProductForPrice: Product | null;
   setEditingProductForPrice: (product: Product | null) => void;
+  isProductFormOpen: boolean;
+  setIsProductFormOpen: (open: boolean) => void;
+  editingProductForForm: Product | null;
+  openCreateProductModal: () => void;
+  openEditProductModal: (product: Product) => void;
   previewProductImage: Product | null;
   setPreviewProductImage: (product: Product | null) => void;
   getProductById: (id: string) => Product | undefined;
@@ -59,6 +77,8 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 const CUSTOM_PRICES_STORAGE_KEY = 'real_alimentos_custom_prices_v1';
 const CUSTOM_IMAGES_STORAGE_KEY = 'real_alimentos_custom_images_v1';
+const CUSTOM_PRODUCTS_STORAGE_KEY = 'real_alimentos_custom_products_v1';
+const DELETED_PRODUCTS_STORAGE_KEY = 'real_alimentos_deleted_products_v1';
 const LOCAL_STOCK_CACHE_KEY = 'real_alimentos_stock_cache_v1';
 
 export function ProductProvider({ children }: { children: ReactNode }) {
@@ -79,6 +99,26 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
+    }
+  });
+
+  // Map of productId -> full custom or edited Product
+  const [customProductsMap, setCustomProductsMap] = useState<Record<string, Product>>(() => {
+    try {
+      const saved = localStorage.getItem(CUSTOM_PRODUCTS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Array of deleted product IDs
+  const [deletedProductIds, setDeletedProductIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(DELETED_PRODUCTS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
   });
 
@@ -105,6 +145,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [isStockManagerOpen, setIsStockManagerOpen] = useState(false);
   const [activeManagerTab, setActiveManagerTab] = useState<'prices' | 'stock' | 'logs'>('prices');
   const [editingProductForPrice, setEditingProductForPrice] = useState<Product | null>(null);
+  const [isProductFormOpen, setIsProductFormOpen] = useState(false);
+  const [editingProductForForm, setEditingProductForForm] = useState<Product | null>(null);
   const [previewProductImage, setPreviewProductImage] = useState<Product | null>(null);
 
   // Initial local to Firestore migration (runs once if local data exists)
@@ -117,9 +159,58 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       if (Object.keys(parsedPrices).length > 0 || Object.keys(parsedImages).length > 0) {
         syncLocalCustomizationsToFirestore(parsedPrices, parsedImages);
       }
+
+      const savedCustomProds = localStorage.getItem(CUSTOM_PRODUCTS_STORAGE_KEY);
+      const parsedCustomProds = savedCustomProds ? JSON.parse(savedCustomProds) : {};
+      if (Object.keys(parsedCustomProds).length > 0) {
+        syncLocalCustomProductsToFirestore(parsedCustomProds);
+      }
     } catch (e) {
       console.warn('Could not sync initial local customizations to Firestore:', e);
     }
+  }, []);
+
+  // Subscribe to real-time Firestore custom products & deleted products
+  useEffect(() => {
+    let isMounted = true;
+    const unsubCustomProds = subscribeToCustomProducts(
+      (remoteMap) => {
+        if (!isMounted) return;
+        setCustomProductsMap((prev) => {
+          // Merge local and remote so offline/pending local items are never wiped out
+          const merged = { ...prev, ...remoteMap };
+          // Reconcile any local-only items to Firestore
+          Object.keys(prev).forEach((localId) => {
+            if (!remoteMap[localId] && prev[localId]) {
+              saveCustomProductInFirestore(prev[localId]).catch(() => {});
+            }
+          });
+          return merged;
+        });
+      },
+      (err) => {
+        console.warn('Firebase custom products sync warning:', err);
+      }
+    );
+
+    const unsubDeletedProds = subscribeToDeletedProducts(
+      (remoteDeletedIds) => {
+        if (!isMounted) return;
+        setDeletedProductIds((prev) => {
+          const combined = Array.from(new Set([...prev, ...remoteDeletedIds]));
+          return combined;
+        });
+      },
+      (err) => {
+        console.warn('Firebase deleted products sync warning:', err);
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      unsubCustomProds();
+      unsubDeletedProds();
+    };
   }, []);
 
   // Subscribe to real-time Firestore product customizations (photos & prices)
@@ -219,9 +310,58 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     }
   }, [customImages]);
 
-  // Compute merged products with Prices, Images & Real-Time Stock
+  // Persist custom products
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOM_PRODUCTS_STORAGE_KEY, JSON.stringify(customProductsMap));
+    } catch (e) {
+      console.error('Failed to save custom products', e);
+    }
+  }, [customProductsMap]);
+
+  // Persist deleted product IDs
+  useEffect(() => {
+    try {
+      localStorage.setItem(DELETED_PRODUCTS_STORAGE_KEY, JSON.stringify(deletedProductIds));
+    } catch (e) {
+      console.error('Failed to save deleted product IDs', e);
+    }
+  }, [deletedProductIds]);
+
+  // Compute merged products with Custom Products, Prices, Images & Real-Time Stock
   const products = useMemo(() => {
-    return ALL_PRODUCTS.map((raw) => {
+    const baseIdsSet = new Set(ALL_PRODUCTS.map(p => p.id));
+    const deletedSet = new Set(deletedProductIds);
+
+    // 1. New custom-created products (not in ALL_PRODUCTS) placed first so recently added items are easy to find
+    const standaloneCustomProducts: Product[] = Object.values(customProductsMap)
+      .filter(cp => cp && cp.id && !baseIdsSet.has(cp.id) && !deletedSet.has(cp.id))
+      .map(cp => ({
+        ...cp,
+        isCustomProduct: true,
+        imageUrl: cp.imageUrl || getProductCatalogImage(cp)
+      }));
+
+    // 2. Base catalog products merged with any full-product edits in customProductsMap
+    const mergedBaseProducts: Product[] = ALL_PRODUCTS
+      .filter(raw => !deletedSet.has(raw.id))
+      .map(raw => {
+        const editedOverride = customProductsMap[raw.id];
+        if (editedOverride) {
+          return {
+            ...raw,
+            ...editedOverride,
+            id: raw.id,
+            isCustomProduct: true,
+            imageUrl: editedOverride.imageUrl || raw.imageUrl || getProductCatalogImage(editedOverride)
+          };
+        }
+        return raw;
+      });
+
+    const combinedRaw = [...standaloneCustomProducts, ...mergedBaseProducts];
+
+    return combinedRaw.map((raw) => {
       const hasCustomPrice = customPrices[raw.id] !== undefined;
       const hasCustomImage = customImages[raw.id] !== undefined;
 
@@ -230,8 +370,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
       // Stock from Firebase or default
       const stockDoc = stockMap[raw.id];
-      const stockQuantity = stockDoc !== undefined ? stockDoc.stockQuantity : DEFAULT_INITIAL_STOCK;
-      const minStockAlert = stockDoc?.minStockAlert ?? DEFAULT_MIN_ALERT;
+      const stockQuantity = stockDoc !== undefined ? stockDoc.stockQuantity : (raw.stockQuantity ?? DEFAULT_INITIAL_STOCK);
+      const minStockAlert = stockDoc?.minStockAlert ?? (raw.minStockAlert ?? DEFAULT_MIN_ALERT);
       const isOutOfStock = stockQuantity <= 0;
       const isUnlimitedStock = stockDoc?.isUnlimited ?? false;
 
@@ -240,7 +380,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         suggestedPrice: effectivePrice,
         imageUrl: effectiveImage,
         originalPrice: raw.originalPrice ?? raw.suggestedPrice,
-        isCustomPrice: hasCustomPrice,
+        isCustomPrice: hasCustomPrice || Boolean(raw.isCustomProduct),
         isCustomImage: hasCustomImage,
         stockQuantity,
         minStockAlert,
@@ -248,10 +388,11 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         isUnlimitedStock
       };
     });
-  }, [customPrices, customImages, stockMap]);
+  }, [customProductsMap, deletedProductIds, customPrices, customImages, stockMap]);
 
   const customPricesCount = Object.keys(customPrices).length;
   const customImagesCount = Object.keys(customImages).length;
+  const customProductsCount = Object.keys(customProductsMap).length;
 
   const lowStockCount = useMemo(() => {
     return products.filter(p => !p.isUnlimitedStock && (p.stockQuantity ?? 0) > 0 && (p.stockQuantity ?? 0) <= (p.minStockAlert ?? 10)).length;
@@ -260,6 +401,116 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const outOfStockCount = useMemo(() => {
     return products.filter(p => !p.isUnlimitedStock && (p.stockQuantity ?? 0) <= 0).length;
   }, [products]);
+
+  const openCreateProductModal = () => {
+    setEditingProductForForm(null);
+    setIsProductFormOpen(true);
+  };
+
+  const openEditProductModal = (product: Product) => {
+    setEditingProductForForm(product);
+    setIsProductFormOpen(true);
+  };
+
+  const saveCustomProduct = async (
+    productData: Omit<Product, 'id'> & { id?: string },
+    initialStock?: number,
+    minStockAlert?: number
+  ): Promise<Product> => {
+    const isEditing = Boolean(productData.id);
+    const slugBase = (productData.name || 'item')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 28);
+
+    const id = productData.id || `custom-${slugBase || 'prod'}-${Date.now().toString().slice(-5)}`;
+    const cleanPrice = Number((Number(productData.suggestedPrice) || 0).toFixed(2));
+    const cleanImageUrl = (productData.imageUrl || '').trim();
+
+    const fullProduct: Product = {
+      id,
+      name: String(productData.name || '').trim(),
+      brand: (productData.brand || 'vigor') as BrandId,
+      brandName: String(productData.brandName || 'Real Alimentos').trim(),
+      category: String(productData.category || 'laticinios-iogurtes').trim(),
+      weight: String(productData.weight || '1 un').trim(),
+      packageType: String(productData.packageType || 'Unidade').trim(),
+      description: String(productData.description || `${productData.name} - Distribuído por Real Alimentos.`).trim(),
+      temperature: productData.temperature || 'resfriado',
+      pageNumber: Math.max(2, Number(productData.pageNumber) || 2),
+      tags: Array.isArray(productData.tags) && productData.tags.length > 0
+        ? productData.tags.filter(Boolean).map(t => String(t).trim())
+        : [String(productData.brandName || 'Catálogo').trim()],
+      suggestedPrice: cleanPrice,
+      originalPrice: Number(productData.originalPrice ?? cleanPrice),
+      imageUrl: cleanImageUrl,
+      highlight: String(productData.highlight || '').trim(),
+      barcode: String(productData.barcode || '').trim(),
+      isCustomProduct: true,
+      stockQuantity: initialStock !== undefined ? Math.max(0, Math.round(initialStock)) : DEFAULT_INITIAL_STOCK,
+      minStockAlert: minStockAlert !== undefined ? Math.max(0, Math.round(minStockAlert)) : DEFAULT_MIN_ALERT
+    };
+
+    // 1. Optimistically update customProductsMap and remove from deletedProductIds if present
+    setCustomProductsMap((prev) => ({
+      ...prev,
+      [id]: fullProduct
+    }));
+    setDeletedProductIds((prev) => prev.filter((delId) => delId !== id));
+
+    // 2. Sync customPrice and customImage overrides if present so they match the new values
+    setCustomPrices((prev) => ({
+      ...prev,
+      [id]: cleanPrice
+    }));
+    if (cleanImageUrl) {
+      setCustomImages((prev) => ({
+        ...prev,
+        [id]: cleanImageUrl
+      }));
+    }
+
+    // 3. Persist product in Firestore
+    try {
+      await saveCustomProductInFirestore(fullProduct);
+      await saveProductCustomizationInFirestore(id, {
+        customPrice: cleanPrice,
+        ...(cleanImageUrl ? { customImageUrl: cleanImageUrl } : {})
+      });
+    } catch (err) {
+      console.warn('Firestore saveCustomProduct warning (saved locally):', err);
+    }
+
+    // 4. Persist initial/updated stock in Firestore
+    if (initialStock !== undefined && !isNaN(initialStock)) {
+      await updateProductStock(
+        id,
+        initialStock,
+        isEditing ? 'Edição de cadastro do produto' : 'Cadastro de novo produto individual',
+        minStockAlert ?? DEFAULT_MIN_ALERT
+      );
+    }
+
+    return fullProduct;
+  };
+
+  const deleteProduct = async (productId: string): Promise<void> => {
+    if (!productId) return;
+    setDeletedProductIds((prev) => Array.from(new Set([...prev, productId])));
+    setCustomProductsMap((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+    try {
+      await deleteProductInFirestore(productId);
+    } catch (err) {
+      console.warn('Failed to delete product in Firestore:', err);
+    }
+  };
 
   const updateProductPrice = (productId: string, newPrice: number) => {
     if (isNaN(newPrice) || newPrice < 0) return;
@@ -544,11 +795,14 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         firebaseSyncState,
         customPricesCount,
         customImagesCount,
+        customProductsCount,
         lowStockCount,
         outOfStockCount,
         updateProductPrice,
         updateProductImage,
         updateProductStock,
+        saveCustomProduct,
+        deleteProduct,
         bulkAdjustStock,
         seedInitialStock,
         deductOrderStock,
@@ -569,6 +823,11 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         setActiveManagerTab,
         editingProductForPrice,
         setEditingProductForPrice,
+        isProductFormOpen,
+        setIsProductFormOpen,
+        editingProductForForm,
+        openCreateProductModal,
+        openEditProductModal,
         previewProductImage,
         setPreviewProductImage,
         getProductById

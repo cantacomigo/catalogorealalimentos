@@ -16,6 +16,12 @@ service cloud.firestore {
     match /product_customizations/{customId} {
       allow read, write: if true;
     }
+    match /custom_products/{productId} {
+      allow read, write: if true;
+    }
+    match /deleted_products/{productId} {
+      allow read, write: if true;
+    }
     match /catalog_customizations/{customId} {
       allow read, write: if true;
     }
