@@ -172,7 +172,7 @@ export function ProductImageLightboxModal() {
   return (
     <div 
       id="product-image-lightbox"
-      className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200 select-none"
+      className="fixed inset-0 z-[90] flex flex-col items-center justify-between bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200 select-none"
       onClick={() => setPreviewProductImage(null)}
     >
       {/* Top Header Bar */}

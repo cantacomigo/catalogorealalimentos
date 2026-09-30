@@ -89,7 +89,7 @@ export const AuthModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+    <div className="fixed inset-0 z-[85] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in zoom-in-95">
         
         {/* Header */}

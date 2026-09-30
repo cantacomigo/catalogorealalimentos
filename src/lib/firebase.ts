@@ -5,6 +5,7 @@ import {
   doc, 
   setDoc, 
   getDoc, 
+  getDocFromServer,
   getDocs, 
   onSnapshot, 
   updateDoc, 
@@ -40,7 +41,7 @@ let app: any;
 try {
   app = getApps().length > 0 ? getApp() : initializeApp(config);
 } catch (err) {
-  console.warn('Firebase initialization error/warning:', err);
+  console.warn('Firebase initialization warning:', err);
   app = getApps()[0] || initializeApp(config);
 }
 
@@ -52,12 +53,25 @@ export const db = config.firestoreDatabaseId
 export const STOCK_COLLECTION = 'stock';
 export const STOCK_LOGS_COLLECTION = 'stock_logs';
 
+// Validate connection to Firestore on boot
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, STOCK_COLLECTION, '_connection_check'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error('Please check your Firebase configuration.');
+    }
+  }
+}
+testConnection();
+
 export {
   app,
   collection,
   doc,
   setDoc,
   getDoc,
+  getDocFromServer,
   getDocs,
   onSnapshot,
   updateDoc,

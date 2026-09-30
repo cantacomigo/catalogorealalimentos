@@ -336,9 +336,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     const deletedSet = new Set(deletedProductIds);
 
     // 1. New custom-created products (not in ALL_PRODUCTS) placed first so recently added items are easy to find
-    const standaloneCustomProducts: Product[] = Object.values(customProductsMap)
-      .filter(cp => cp && cp.id && !baseIdsSet.has(cp.id) && !deletedSet.has(cp.id))
-      .map(cp => ({
+    const customProductList = Object.values(customProductsMap) as Product[];
+    const standaloneCustomProducts: Product[] = customProductList
+      .filter((cp: Product) => cp && cp.id && !baseIdsSet.has(cp.id) && !deletedSet.has(cp.id))
+      .map((cp: Product) => ({
         ...cp,
         isCustomProduct: true,
         imageUrl: cp.imageUrl || getProductCatalogImage(cp)
@@ -382,12 +383,15 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       const isOutOfStock = stockQuantity <= 0;
       const isUnlimitedStock = stockDoc?.isUnlimited ?? false;
 
+      const origPrice = raw.originalPrice ?? raw.suggestedPrice;
+      const priceChanged = hasCustomPrice && Math.abs(effectivePrice - origPrice) > 0.009;
+
       return {
         ...raw,
         suggestedPrice: effectivePrice,
         imageUrl: effectiveImage,
-        originalPrice: raw.originalPrice ?? raw.suggestedPrice,
-        isCustomPrice: hasCustomPrice || Boolean(raw.isCustomProduct),
+        originalPrice: origPrice,
+        isCustomPrice: priceChanged,
         isCustomImage: hasCustomImage,
         stockQuantity,
         minStockAlert,

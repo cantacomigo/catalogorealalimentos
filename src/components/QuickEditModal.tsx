@@ -95,7 +95,7 @@ export function QuickEditModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in">
+    <div className="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in">
       <div 
         className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}

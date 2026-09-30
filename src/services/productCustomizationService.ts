@@ -36,18 +36,19 @@ export function sanitizeProductForFirestore(product: Product): Record<string, an
     packageType: String(product.packageType || 'Unidade').trim(),
     description: String(product.description || '').trim(),
     temperature: product.temperature || 'resfriado',
-    pageNumber: Number(product.pageNumber) || 2,
+    pageNumber: Math.max(2, Number(product.pageNumber) || 2),
     tags: Array.isArray(product.tags) ? product.tags.filter(Boolean).map(t => String(t).trim()) : [],
     suggestedPrice: Number(product.suggestedPrice) || 0,
     originalPrice: Number(product.originalPrice ?? product.suggestedPrice) || 0,
     imageUrl: String(product.imageUrl || '').trim(),
     highlight: String(product.highlight || '').trim(),
     barcode: String(product.barcode || '').trim(),
-    isCustomProduct: Boolean(product.isCustomProduct ?? true),
+    stockQuantity: Number(product.stockQuantity ?? 50),
+    minStockAlert: Number(product.minStockAlert ?? 10),
+    isCustomProduct: true,
     updatedAt: new Date().toISOString()
   };
 
-  // Strip any accidental undefined properties
   Object.keys(clean).forEach((key) => {
     if (clean[key] === undefined) {
       delete clean[key];
@@ -103,8 +104,25 @@ export async function saveCustomProductInFirestore(product: Product): Promise<vo
   try {
     const cleanData = sanitizeProductForFirestore(product);
     const docRef = doc(db, CUSTOM_PRODUCTS_COLLECTION, cleanData.id);
-    await setDoc(docRef, cleanData, { merge: true });
-    // Ensure it is not marked as deleted
+    const stockRef = doc(db, STOCK_COLLECTION, cleanData.id);
+
+    await Promise.all([
+      setDoc(docRef, cleanData, { merge: true }),
+      setDoc(
+        stockRef,
+        {
+          productId: cleanData.id,
+          stockQuantity: cleanData.stockQuantity,
+          minStockAlert: cleanData.minStockAlert,
+          unit: cleanData.packageType || 'Unidade',
+          customPrice: cleanData.suggestedPrice,
+          ...(cleanData.imageUrl ? { customImage: cleanData.imageUrl } : {}),
+          lastUpdated: cleanData.updatedAt
+        },
+        { merge: true }
+      )
+    ]);
+
     try {
       await deleteDoc(doc(db, DELETED_PRODUCTS_COLLECTION, cleanData.id));
     } catch {
@@ -121,11 +139,14 @@ export async function saveCustomProductInFirestore(product: Product): Promise<vo
  */
 export async function deleteProductInFirestore(productId: string): Promise<void> {
   try {
-    await setDoc(doc(db, DELETED_PRODUCTS_COLLECTION, productId), {
-      productId,
-      deletedAt: new Date().toISOString()
-    });
-    await deleteDoc(doc(db, CUSTOM_PRODUCTS_COLLECTION, productId));
+    await Promise.all([
+      setDoc(doc(db, DELETED_PRODUCTS_COLLECTION, productId), {
+        productId,
+        deletedAt: new Date().toISOString()
+      }),
+      deleteDoc(doc(db, CUSTOM_PRODUCTS_COLLECTION, productId)),
+      deleteDoc(doc(db, PRODUCT_CUSTOMIZATIONS_COLLECTION, productId))
+    ]);
   } catch (err) {
     console.warn(`Failed to delete product ${productId} in Firestore:`, err);
     throw err;
@@ -173,8 +194,7 @@ export async function syncLocalCustomProductsToFirestore(
     if (entries.length === 0) return;
     for (const prod of entries) {
       if (prod && prod.id && prod.name) {
-        const cleanData = sanitizeProductForFirestore(prod);
-        await setDoc(doc(db, CUSTOM_PRODUCTS_COLLECTION, cleanData.id), cleanData, { merge: true });
+        await saveCustomProductInFirestore(prod);
       }
     }
   } catch (err) {
@@ -192,7 +212,6 @@ export async function compressImage(
   quality = 0.85
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    // If it's already an external HTTP(S) URL, keep it as is
     if (typeof fileOrDataUrl === 'string' && (fileOrDataUrl.startsWith('http://') || fileOrDataUrl.startsWith('https://'))) {
       resolve(fileOrDataUrl);
       return;
@@ -222,7 +241,6 @@ export async function compressImage(
         return;
       }
 
-      // Draw with smooth scaling
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -349,7 +367,6 @@ export async function saveBulkPricesInFirestore(
     if (entries.length === 0) return;
 
     const now = new Date().toISOString();
-    // Firestore batch limit is 500 operations; chunk into groups of 200 products (400 ops)
     const chunkSize = 200;
     for (let i = 0; i < entries.length; i += chunkSize) {
       const chunk = entries.slice(i, i + chunkSize);
@@ -399,18 +416,32 @@ export async function syncLocalCustomizationsToFirestore(
     const productIds = Array.from(new Set([...Object.keys(localPrices), ...Object.keys(localImages)]));
     if (productIds.length === 0) return;
 
-    for (const pid of productIds) {
-      const payload: Partial<ProductCustomizationDoc> = {
-        productId: pid,
-        updatedAt: new Date().toISOString()
-      };
-      if (localPrices[pid] !== undefined) {
-        payload.customPrice = localPrices[pid];
+    const now = new Date().toISOString();
+    const chunkSize = 150;
+    for (let i = 0; i < productIds.length; i += chunkSize) {
+      const chunk = productIds.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      for (const pid of chunk) {
+        const payload: Record<string, any> = {
+          productId: pid,
+          updatedAt: now
+        };
+        const stockPayload: Record<string, any> = {
+          productId: pid,
+          lastUpdated: now
+        };
+        if (localPrices[pid] !== undefined) {
+          payload.customPrice = localPrices[pid];
+          stockPayload.customPrice = localPrices[pid];
+        }
+        if (localImages[pid] !== undefined) {
+          payload.customImageUrl = localImages[pid];
+          stockPayload.customImage = localImages[pid];
+        }
+        batch.set(doc(db, PRODUCT_CUSTOMIZATIONS_COLLECTION, pid), payload, { merge: true });
+        batch.set(doc(db, STOCK_COLLECTION, pid), stockPayload, { merge: true });
       }
-      if (localImages[pid] !== undefined) {
-        payload.customImageUrl = localImages[pid];
-      }
-      await setDoc(doc(db, PRODUCT_CUSTOMIZATIONS_COLLECTION, pid), payload, { merge: true });
+      await batch.commit();
     }
   } catch (err) {
     console.warn('Initial local to Firestore sync warning:', err);

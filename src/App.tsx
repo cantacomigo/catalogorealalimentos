@@ -268,15 +268,6 @@ function CatalogApp() {
       {/* Product Detail Modal */}
       <ProductModal />
 
-      {/* Product Image Lightbox (Full Size View) */}
-      <ProductImageLightboxModal />
-
-      {/* Quick Edit Price & Photo Popup */}
-      <QuickEditModal />
-
-      {/* Individual Product Add/Edit Full Modal */}
-      <ProductFormModal />
-
       {/* Master Price & Catalog Manager Modal */}
       <PriceManagerModal />
 
@@ -289,8 +280,17 @@ function CatalogApp() {
       {/* Sales Representative & Invoice Management Portal */}
       <RepOrderPortalModal />
 
+      {/* Quick Edit Price & Photo Popup */}
+      <QuickEditModal />
+
+      {/* Individual Product Add/Edit Full Modal */}
+      <ProductFormModal />
+
       {/* Sales Representative Add/Edit Form Modal */}
       <SalesRepFormModal />
+
+      {/* Product Image Lightbox (Full Size View) */}
+      <ProductImageLightboxModal />
 
       {/* Authentication & Role Selection Modal */}
       <AuthModal />

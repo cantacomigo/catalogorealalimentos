@@ -1130,7 +1130,7 @@ export function PriceManagerModal() {
 
         {/* Modal de Confirmação: Inicializar Firestore */}
         {showSeedModal && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
             <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -1224,7 +1224,7 @@ export function PriceManagerModal() {
 
         {/* Modal de Troca de Foto */}
         {photoEditingProduct && (
-          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
             <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

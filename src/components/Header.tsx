@@ -3,27 +3,18 @@ import {
   ShoppingCart, 
   Search, 
   BookOpen, 
-  PhoneCall, 
-  PackageCheck,
   X,
-  SlidersHorizontal,
-  DollarSign,
-  Boxes,
-  Database,
   Users,
-  Send,
-  FileText,
-  MapPin,
   ShieldCheck,
   Lock,
   LogOut,
-  UserCheck
+  UserCheck,
+  PlusCircle
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 import { useAuth } from '../context/AuthContext';
 import { FIRST_CATALOG_PAGE, CATALOG_PAGES_WITH_PRODUCTS } from '../data/products';
-import { REAL_ALIMENTOS_LOGO } from '../data/brands';
 import { RealAlimentosLogo } from './RealAlimentosLogo';
 
 interface HeaderProps {
@@ -52,14 +43,13 @@ export function Header({
     selectedSalesRep,
     salesReps,
     setSelectedSalesRep,
-    openCreateRepModal,
-    openEditRepModal
+    openCreateRepModal
   } = useCart();
   const { 
     products,
     setIsPriceManagerOpen, 
     setActiveManagerTab, 
-    customPricesCount, 
+    openCreateProductModal,
     lowStockCount, 
     outOfStockCount 
   } = useProducts();
@@ -76,55 +66,56 @@ export function Header({
   const [isRepSelectorOpen, setIsRepSelectorOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
-  // Orders count filtered by current rep if logged in as rep, or total if admin
   const visibleOrders = isSalesRep
     ? orders.filter(o => o.salesRep.id === user.salesRepId)
     : orders;
   const pendingOrdersCount = visibleOrders.filter(o => o.status === 'aguardando_vendedor').length;
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
-      {/* Top micro bar with regional rep routing notice and Role Session indicator */}
-      <div className="bg-gradient-to-r from-red-700 via-red-800 to-slate-900 text-white text-xs py-1.5 px-4">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+      {/* Slim Top Utility Bar */}
+      <div className="bg-slate-900 text-slate-200 text-xs py-1.5 px-4 border-b border-slate-800">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 font-medium">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="hidden sm:inline">Real Alimentos • Distribuição com atendimento regional e emissão direta de NF</span>
-            <span className="sm:hidden">Real Alimentos • Catálogo Digital</span>
+          <div className="flex items-center gap-2 text-[11px] text-slate-300">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span className="hidden sm:inline">Real Alimentos · Distribuição Atacadista e Food Service com emissão direta de NF</span>
+            <span className="sm:hidden">Real Alimentos · Catálogo Digital</span>
           </div>
 
-          <div className="flex items-center gap-2.5 text-slate-100">
-            {/* Quick Rep Switcher Chip for Client / Routing */}
+          <div className="flex items-center gap-2 text-slate-100">
+            {/* Regional Sales Rep Selector */}
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setIsRepSelectorOpen(!isRepSelectorOpen)}
-                className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-colors"
+                className="bg-white/10 hover:bg-white/15 text-white px-2.5 py-0.5 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                 title="Vendedor atribuído à sua região"
               >
-                <Users className="w-3 h-3 text-red-200" />
-                <span>Vendedor: <strong>{selectedSalesRep.name}</strong></span>
+                <Users className="w-3 h-3 text-blue-300" />
+                <span>Representante: <strong className="font-semibold">{selectedSalesRep.name}</strong></span>
               </button>
 
               {isRepSelectorOpen && (
-                <div className="absolute right-0 mt-1.5 w-72 bg-white text-slate-900 rounded-xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in">
+                <div className="absolute right-0 mt-1.5 w-72 bg-white text-slate-900 rounded-xl shadow-xl border border-slate-200 p-2 z-50">
                   <div className="text-[11px] font-bold text-slate-500 uppercase px-2 py-1 border-b border-slate-100">
-                    Selecione o Vendedor da sua Região:
+                    Representante da sua Região
                   </div>
                   <div className="max-h-56 overflow-y-auto py-1">
                     {salesReps.map((rep) => (
                       <button
+                        type="button"
                         key={rep.id}
                         onClick={() => {
                           setSelectedSalesRep(rep);
                           setIsRepSelectorOpen(false);
                         }}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex flex-col transition-colors ${
-                          selectedSalesRep.id === rep.id ? 'bg-red-50 text-red-700 font-bold' : 'hover:bg-slate-100 text-slate-700'
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex flex-col transition-colors cursor-pointer ${
+                          selectedSalesRep.id === rep.id ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-100 text-slate-700'
                         }`}
                       >
                         <div className="flex justify-between items-center">
                           <span>{rep.name}</span>
-                          <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-mono">{rep.code}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">{rep.code}</span>
                         </div>
                         <span className="text-[10px] text-slate-400 font-normal">{rep.regionName}</span>
                       </button>
@@ -134,15 +125,17 @@ export function Header({
                   {isAdmin && (
                     <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]">
                       <button
+                        type="button"
                         onClick={() => {
                           setIsRepSelectorOpen(false);
                           openCreateRepModal();
                         }}
-                        className="text-red-700 hover:text-red-800 font-bold hover:underline py-1 px-1 flex items-center gap-1 cursor-pointer"
+                        className="text-blue-700 hover:text-blue-800 font-bold hover:underline py-1 px-1 flex items-center gap-1 cursor-pointer"
                       >
-                        + Cadastrar Vendedor
+                        + Novo Vendedor
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
                           setIsRepSelectorOpen(false);
                           setIsRepPortalOpen(true);
@@ -157,63 +150,82 @@ export function Header({
               )}
             </div>
 
-            {/* Role Session Status Pill & Switcher */}
+            {/* Role Switcher */}
             <div className="relative">
               {isAdmin ? (
                 <button
+                  type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs transition-colors"
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Admin</span>
+                  <span>Modo Admin</span>
                 </button>
               ) : isSalesRep ? (
                 <button
+                  type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs transition-colors"
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <UserCheck className="w-3.5 h-3.5 text-blue-200" />
                   <span>{user.salesRepName?.split(' ')[0]} (Vendedor)</span>
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={() => openAuthModal('sales_rep')}
-                  className="bg-white/10 hover:bg-white/20 text-white font-semibold text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1 transition-colors"
-                  title="Acesso restrito para Vendedores e Administrador"
+                  className="bg-white/10 hover:bg-white/15 text-slate-200 font-medium text-[11px] px-2.5 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+                  title="Acesso para Vendedores e Administração"
                 >
-                  <Lock className="w-3 h-3 text-slate-300" />
-                  <span>Área Restrita</span>
+                  <Lock className="w-3 h-3 text-slate-400" />
+                  <span>Acesso Restrito</span>
                 </button>
               )}
 
               {isUserMenuOpen && (
-                <div className="absolute right-0 mt-1.5 w-60 bg-white text-slate-900 rounded-xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in">
+                <div className="absolute right-0 mt-1.5 w-60 bg-white text-slate-900 rounded-xl shadow-xl border border-slate-200 p-2 z-50">
                   <div className="p-2 border-b border-slate-100 mb-1">
                     <p className="text-xs font-bold text-slate-900">
-                      {isAdmin ? '🛡️ Administrador Geral' : `💼 ${user.salesRepName}`}
+                      {isAdmin ? 'Administrador Geral' : user.salesRepName}
                     </p>
                     <p className="text-[10px] text-slate-500">
-                      {isAdmin ? 'Acesso total: alterar preços, estoque e fotos' : 'Acesso restrito aos seus pedidos'}
+                      {isAdmin ? 'Controle de catálogo, preços e estoque' : 'Painel de pedidos da sua carteira'}
                     </p>
                   </div>
 
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        openCreateProductModal();
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-emerald-50 text-emerald-700 font-bold flex items-center gap-2 cursor-pointer"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>+ Cadastrar Novo Produto</span>
+                    </button>
+                  )}
+
                   <button
+                    type="button"
                     onClick={() => {
                       setIsUserMenuOpen(false);
                       openAuthModal('admin');
                     }}
-                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 flex items-center gap-2 text-slate-700"
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-slate-100 flex items-center gap-2 text-slate-700 cursor-pointer"
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
-                    <span>Trocar Perfil / Entrar como Admin</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Trocar Perfil de Acesso</span>
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => {
                       setIsUserMenuOpen(false);
                       logoutToClient();
                     }}
-                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-red-50 text-red-600 font-semibold flex items-center gap-2 mt-1"
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-red-50 text-red-600 font-semibold flex items-center gap-2 mt-1 cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Sair (Modo Cliente)</span>
@@ -225,179 +237,124 @@ export function Header({
         </div>
       </div>
 
-      {/* Main navigation container */}
+      {/* Main Navigation Row */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex items-center justify-between gap-3 sm:gap-4">
-          
-          {/* Logo Brand */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div 
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedPage(null);
-                setViewMode('grid');
-              }}
-              className="cursor-pointer group"
-              title="Real Alimentos - Início"
-            >
-              <RealAlimentosLogo size="md" variant="full" />
-            </div>
+          {/* Zone 1: Brand */}
+          <div 
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedPage(null);
+              setViewMode('grid');
+            }}
+            className="cursor-pointer shrink-0"
+            title="Real Alimentos - Início"
+          >
+            <RealAlimentosLogo size="md" variant="full" showSubtitle={false} />
           </div>
 
-          {/* Central Live Search Bar */}
-          <div className="flex-1 max-w-lg hidden md:block">
-            <div className="relative">
+          {/* Zone 2: Central Live Search & View Mode */}
+          <div className="flex-1 max-w-xl hidden md:flex items-center gap-2">
+            <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 id="main-search-input"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar por produto, marca (Vigor, Xandô, Seara...), pág ou categoria..."
-                className="w-full pl-10 pr-10 py-2 text-sm bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-slate-200 focus:border-red-500 rounded-xl outline-none transition-all placeholder:text-slate-400 text-slate-900"
+                placeholder="Buscar produto, marca (Vigor, Seara, Xandô...) ou página..."
+                className="w-full pl-10 pr-9 py-2 text-xs sm:text-sm bg-slate-100 hover:bg-slate-100/90 focus:bg-white border border-slate-200 focus:border-blue-600 rounded-xl outline-none transition-all placeholder:text-slate-400 text-slate-900"
               />
               {searchQuery && (
                 <button
+                  type="button"
                   id="clear-search-button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Right Action buttons */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            
-            {/* Sales Rep / Orders Portal Button (If client clicks, open login modal) */}
-            <button
-              id="open-rep-portal-btn"
-              onClick={() => {
-                if (isClient) {
-                  openAuthModal('sales_rep');
-                } else {
-                  setIsRepPortalOpen(true);
-                }
-              }}
-              className="relative px-3 py-2 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-              title="Acessar Painel de Pedidos"
-            >
-              <Users className="w-3.5 h-3.5 text-red-400" />
-              <span className="hidden sm:inline">
-                {isAdmin ? 'Painel Geral' : isSalesRep ? 'Meus Pedidos' : 'Área do Vendedor'}
-              </span>
-              <span className="sm:hidden">Pedidos</span>
-              {pendingOrdersCount > 0 && (
-                <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
-                  {pendingOrdersCount}
-                </span>
-              )}
-            </button>
-
-            {/* Admin-only Price & Stock Management Button */}
-            {isAdmin ? (
+            {/* View mode toggle */}
+            <div className="hidden xl:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold shrink-0">
               <button
-                id="open-stock-manager-btn"
-                onClick={() => {
-                  setActiveManagerTab('prices');
-                  setIsPriceManagerOpen(true);
-                }}
-                className="relative px-3 py-2 text-xs font-bold rounded-xl bg-red-700 hover:bg-red-800 text-white transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-                title="Painel Administrador: Editar preços, fotos e estoque"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-                <span className="hidden sm:inline">Painel Admin</span>
-                <span className="sm:hidden">Admin</span>
-                {(lowStockCount > 0 || outOfStockCount > 0) && (
-                  <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                    {lowStockCount + outOfStockCount}
-                  </span>
-                )}
-              </button>
-            ) : (
-              <button
-                id="open-admin-login-btn"
-                onClick={() => openAuthModal('admin')}
-                className="px-2.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-all flex items-center gap-1 cursor-pointer"
-                title="Acesso exclusivo para administradores"
-              >
-                <Lock className="w-3.5 h-3.5 text-slate-500" />
-                <span className="hidden lg:inline">Admin</span>
-              </button>
-            )}
-
-            {/* View mode toggle (Grid vs Catalog Brochure Pages) */}
-            <div className="hidden xl:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
-              <button
+                type="button"
                 id="view-grid-btn"
                 onClick={() => setViewMode('grid')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   viewMode === 'grid'
-                    ? 'bg-white text-red-700 shadow-xs'
+                    ? 'bg-white text-blue-700 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Produtos
+                Grade
               </button>
               <button
+                type="button"
                 id="view-pages-btn"
                 onClick={() => setViewMode('pages')}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
                   viewMode === 'pages'
-                    ? 'bg-white text-red-700 shadow-xs'
+                    ? 'bg-white text-blue-700 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                Catálogo em Páginas
+                <span>Folhear</span>
               </button>
             </div>
+          </div>
 
-            {/* Quick Page Jump Selector */}
+          {/* Zone 3: Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Quick Page Selector */}
             <div className="relative">
               <button
+                type="button"
                 id="page-selector-btn"
                 onClick={() => setIsPageMenuOpen(!isPageMenuOpen)}
-                className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                   selectedPage !== null
-                    ? 'bg-red-50 border-red-300 text-red-700'
+                    ? 'bg-blue-50 border-blue-300 text-blue-700 font-bold'
                     : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                 }`}
               >
-                <BookOpen className="w-3.5 h-3.5 text-red-600" />
+                <BookOpen className="w-3.5 h-3.5 text-blue-600" />
                 <span>{selectedPage ? `Pág. ${selectedPage}` : 'Páginas'}</span>
               </button>
 
               {isPageMenuOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-50">
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
                     <span className="text-xs font-bold text-slate-800">Ir para página do catálogo:</span>
                     {selectedPage && (
                       <button 
+                        type="button"
                         onClick={() => { setSelectedPage(null); setIsPageMenuOpen(false); }}
-                        className="text-[11px] text-red-600 hover:underline font-semibold"
+                        className="text-[11px] text-red-600 hover:underline font-semibold cursor-pointer"
                       >
                         Limpar
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-6 gap-1 max-h-48 overflow-y-auto p-1">
+                  <div className="grid grid-cols-6 gap-1 max-h-48 overflow-y-auto p-1 tabular-nums">
                     {(products && products.length > 0
                       ? Array.from(new Set(products.map(p => p.pageNumber).filter((pg): pg is number => typeof pg === 'number' && pg >= FIRST_CATALOG_PAGE))).sort((a: number, b: number) => a - b)
                       : CATALOG_PAGES_WITH_PRODUCTS
                     ).map((pg: number) => (
                       <button
+                        type="button"
                         key={pg}
                         onClick={() => {
                           setSelectedPage(selectedPage === pg ? null : pg);
                           setIsPageMenuOpen(false);
                         }}
-                        className={`h-7 rounded text-xs font-medium transition-all ${
+                        className={`h-7 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                           selectedPage === pg
-                            ? 'bg-red-600 text-white font-bold'
-                            : 'bg-slate-100 hover:bg-red-100 text-slate-700'
+                            ? 'bg-blue-700 text-white font-bold'
+                            : 'bg-slate-100 hover:bg-blue-50 text-slate-700'
                         }`}
                       >
                         {pg}
@@ -408,21 +365,89 @@ export function Header({
               )}
             </div>
 
-            {/* Shopping Cart Trigger Button */}
+            {/* Admin Direct Actions */}
+            {isAdmin ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => openCreateProductModal()}
+                  className="px-3 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer whitespace-nowrap"
+                  title="Cadastrar novo produto individual no catálogo"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span className="hidden lg:inline">+ Novo Produto</span>
+                  <span className="lg:hidden">+ Item</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="open-stock-manager-btn"
+                  onClick={() => {
+                    setActiveManagerTab('prices');
+                    setIsPriceManagerOpen(true);
+                  }}
+                  className="px-3 py-2 text-xs font-bold rounded-xl bg-slate-900 hover:bg-slate-800 text-white transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer whitespace-nowrap"
+                  title="Central de Gestão: Preços, Fotos e Estoque"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+                  <span className="hidden sm:inline">Gestão & Estoque</span>
+                  <span className="sm:hidden">Gestão</span>
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                id="open-admin-login-btn"
+                onClick={() => openAuthModal('admin')}
+                className="px-2.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                title="Acesso Administrativo"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                <span className="hidden lg:inline">Admin</span>
+              </button>
+            )}
+
+            {/* Orders Portal Button */}
             <button
+              type="button"
+              id="open-rep-portal-btn"
+              onClick={() => {
+                if (isClient) {
+                  openAuthModal('sales_rep');
+                } else {
+                  setIsRepPortalOpen(true);
+                }
+              }}
+              className="px-3 py-2 text-xs font-bold rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              title="Acessar Painel de Pedidos e Faturamento"
+            >
+              <Users className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden sm:inline">
+                {isAdmin ? 'Pedidos' : isSalesRep ? 'Meus Pedidos' : 'Vendedor'}
+              </span>
+              {pendingOrdersCount > 0 && (
+                <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full tabular-nums">
+                  {pendingOrdersCount}
+                </span>
+              )}
+            </button>
+
+            {/* Shopping Cart Button */}
+            <button
+              type="button"
               id="open-cart-button"
               onClick={() => setIsCartOpen(true)}
-              className="relative flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
+              className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all cursor-pointer whitespace-nowrap tabular-nums"
             >
               <ShoppingCart className="w-4 h-4" />
               <span className="hidden sm:inline">Pedido</span>
               {totalItemsCount > 0 && (
-                <span className="bg-white text-red-700 text-[11px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-xs">
+                <span className="bg-white text-blue-800 text-[11px] font-extrabold px-1.5 py-0.5 rounded-md min-w-[20px] text-center">
                   {totalItemsCount}
                 </span>
               )}
               {totalEstimatedPrice > 0 && (
-                <span className="hidden 2xl:inline border-l border-red-500/60 pl-2 text-red-100 font-normal text-xs">
+                <span className="hidden 2xl:inline border-l border-blue-500 pl-2 text-blue-100 font-medium text-xs">
                   {totalEstimatedPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               )}
@@ -440,10 +465,11 @@ export function Header({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar produtos, marcas, páginas..."
-              className="w-full pl-9 pr-9 py-2 text-xs bg-slate-100 border border-slate-200 rounded-xl outline-none focus:border-red-500 text-slate-900"
+              className="w-full pl-9 pr-9 py-2 text-xs bg-slate-100 border border-slate-200 rounded-xl outline-none focus:border-blue-600 text-slate-900"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
               >
@@ -456,4 +482,3 @@ export function Header({
     </header>
   );
 }
-
